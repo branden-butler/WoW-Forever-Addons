@@ -1,23 +1,17 @@
 # ProfessionBars Forever
 
-WoW Forever addon for tracking profession and character skill progress.
+Version **1.0** for WoW Forever.
 
-## Version
-
-**v1.0** is the first public-facing version label, based on the previously developed v1.1.63 preview build.
-
-## Features
-
-- Primary professions, secondary professions, and character skills grouped in a consistent order
-- Configurable category label visibility and size, with dynamic group spacing
-- Configurable panel title visibility
-- Recipe Collection and separate Client Catalog (Preview)
-- Character-specific saved settings
+Tracks primary and secondary profession progress and character skill progress in configurable bars. Includes compact grouped display, individual bars, adjustable category headings, a Recipe Collection, and a Client Catalog (Preview).
 
 ## Installation
 
-Copy the `ProfessionBarsForever` addon directory into your WoW Forever `Interface/AddOns` directory and restart or reload the game.
+Extract this ZIP into your WoW Forever `Interface/AddOns/` directory. The result should be `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc`.
 
-## Status
+Restart the game or reload the UI. Configure the addon using its in-game settings or `/profbar`.
 
-The v1.0 distribution ZIP is prepared separately. **The addon source files and binary icon have not yet been uploaded to this GitHub folder.** The catalog remains a preview and its recipe availability has not been fully verified.
+## Notes
+
+- The Client Catalog is a preview; candidate recipes have not all been independently verified.
+- Character Skills tab opening behavior is included from the previous v1.1.63 preview build but still requires in-game verification.
+- The v1.0 label is a release-number reset, not a rollback to older addon code.
