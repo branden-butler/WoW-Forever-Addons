@@ -1,17 +1,45 @@
 # ProfessionBars Forever
 
-Version **1.0** for WoW Forever.
+**Version:** 1.0  
+**Game:** WoW Forever
 
-Tracks primary and secondary profession progress and character skill progress in configurable bars. Includes compact grouped display, individual bars, adjustable category headings, a Recipe Collection, and a Client Catalog (Preview).
+An addon for tracking profession and character skill progress with customizable bars and recipe-browsing tools.
+
+## Features
+
+- **Profession and skill bars:** Track primary professions, secondary professions, Defense, and weapon skills.
+- **Display modes:** Use a compact grouped panel or individual bars.
+- **Group headings:** Fixed category order (Primary Professions, Secondary Professions, Skills), optional labels, and adjustable label sizes.
+- **Appearance controls:** Adjust bar dimensions, opacity, panel appearance, and title visibility.
+- **Recipe Collection:** Browse learned and missing recipes and trainer information.
+- **Client Catalog (Preview):** Search recipes extracted from client data.
+- **Character skill shortcuts:** Clicking a character skill bar is intended to open the Character → Skills tab.
 
 ## Installation
 
-Extract this ZIP into your WoW Forever `Interface/AddOns/` directory. The result should be `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc`.
+1. Download the addon ZIP and extract the `ProfessionBarsForever` directory.
+2. Copy that directory into your WoW Forever `Interface/AddOns/` folder.
+3. Confirm the file exists at `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc`.
+4. Restart the game or reload the interface.
 
-Restart the game or reload the UI. Configure the addon using its in-game settings or `/profbar`.
+## Configuration
 
-## Notes
+Use the in-game settings or enter `/profbar` in chat.
 
-- The Client Catalog is a preview; candidate recipes have not all been independently verified.
-- Character Skills tab opening behavior is included from the previous v1.1.63 preview build but still requires in-game verification.
-- The v1.0 label is a release-number reset, not a rollback to older addon code.
+## Files
+
+- `ProfessionBarsForever.toc` — addon manifest and load order
+- `ProfessionBarsForever.lua` — main addon and bar UI
+- `CatalogUI.lua`, `CatalogData.lua` — client catalog UI and data
+- `RecipeSources.lua`, `SeedCooking.lua`, `TrainerData.lua` — recipe and trainer information
+- `ProfessionIcon.tga` — addon icon
+- `TRAINER_DATA.csv` — supporting trainer data
+
+## Known limitations
+
+- The **Client Catalog** is a preview; not all candidate recipes have been independently verified.
+- Opening the Character → Skills tab from a skill bar still needs confirmation in-game.
+
+## Versioning
+
+**v1.0** is the initial repository release label for the latest developed addon build; it does not represent a rollback to older code.
