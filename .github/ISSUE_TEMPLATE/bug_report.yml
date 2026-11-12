@@ -1,0 +1,49 @@
+name: Bug report
+description: Report an issue with a WoW addon
+title: "[Bug] "
+body:
+  - type: input
+    id: addon
+    attributes:
+      label: Addon name
+      placeholder: ProfessionBars Forever
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Addon version
+      placeholder: v1.0.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: WoW client and build
+      placeholder: WoW Forever — build/version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Lua errors, screenshots, and additional context
+      description: Include relevant settings and profession/skill; remove personal data.
