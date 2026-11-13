@@ -1,23 +1,19 @@
 # ProfessionBars Forever
 
-**First public beta:** 1.0.0-beta.1  
-**Supported game:** WoW Forever
+**Version:** 1.0.0-beta.3  
+**Client:** WoW Forever (beta)
 
-Configurable progress bars for primary and secondary professions, Defense, and weapon skills. Includes compact grouped and individual layouts, category headings, bar size and opacity controls, and a minimap launcher.
+Configurable progress bars for primary and secondary professions, Defense, and weapon skills. Includes compact grouped and individual display modes, adjustable category headings, bar dimensions, opacity, and minimap settings.
 
-## Download and install
-Download the ZIP from the [GitHub Releases page](https://github.com/branden-butler/WoW-Forever-Addons/releases), extract the `ProfessionBarsForever` folder into your WoW Forever `Interface/AddOns/` directory, and restart the game or enter `/reload`.
+## Installation
 
-The manifest should be at `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc`.
+Extract the `ProfessionBarsForever` directory into `Interface/AddOns/`. Verify `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc` exists. Restart WoW or use `/reload`. Configure using `/profbar` or the minimap icon.
 
-Use `/profbar` or the minimap launcher to configure the addon.
+## Current beta limitations
 
-## Beta limitations
-- Clicking a character skill bar opens the Character pane; select **Skills** manually. Automatic Skills-tab navigation is a future enhancement.
-- The Recipe Browser and Client Catalog are intentionally hidden while being improved.
-- Official WoW Classic and Retail compatibility is planned but not included in this build.
+- Clicking Defense or a weapon skill bar **opens the Character pane**. Select the **Skills tab manually**. Automatic navigation is a future enhancement.
+- **Recipe Browser and Client Catalog are hidden** while their behavior and data accuracy are being improved. Right-clicking a progress bar or minimap button no longer opens the Recipe Browser. `/profbar recipes` displays an unavailable message; `/pbfcatalog` is not registered.
+- This build is for **WoW Forever only**. Official WoW Classic and Retail are not yet supported.
 
-## Help test
-See the [beta testing checklist](BETA_TESTING.md) and [changelog](CHANGELOG.md). Report bugs through [GitHub Issues](https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose).
-
-This is a beta release. Please report any Lua errors or unexpected behavior.
+Report issues: https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose
+Beta checklist: https://github.com/branden-butler/WoW-Forever-Addons/blob/main/ProfessionBarsForever/BETA_TESTING.md

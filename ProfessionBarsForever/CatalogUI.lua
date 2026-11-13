@@ -185,5 +185,4 @@ function PBFCreateCatalogButton(recipeBrowser)
  recipeBrowser.PBFCatalogButton:ClearAllPoints()
  recipeBrowser.PBFCatalogButton:SetPoint("TOPRIGHT",recipeBrowser,"TOPRIGHT",-42,-63)
 end
-SLASH_PBFCATALOG1="/pbfcatalog"
-SlashCmdList.PBFCATALOG=PBFToggleCandidateCatalog
+-- Catalog UI is retained for future development, but is not exposed in this beta.

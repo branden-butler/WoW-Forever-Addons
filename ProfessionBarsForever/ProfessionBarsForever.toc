@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: ProfessionBars Forever
 ## Notes: Profession progress, animated skill gain effects, settings and minimap launcher and per-skill visibility
-## Version: 1.0
+## Version: 1.0.0-beta.1
 ## SavedVariables: PBFAccountDB
 ## SavedVariablesPerCharacter: PBFDB
 RecipeSources.lua

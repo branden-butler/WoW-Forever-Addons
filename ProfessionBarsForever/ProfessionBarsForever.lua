@@ -373,37 +373,22 @@ local function createPanel()
   self.hoverElapsed=(self.hoverElapsed or 0)+elapsed
   if self.hoverElapsed>=0.08 then self.hoverElapsed=0;refreshHover() end
  end)
- panel:SetScript("OnMouseUp",function(self, arg1) if arg1=="RightButton" and browser then if browser:IsShown() then browser:Hide() else browser:Show() end end
- end)
+ panel:SetScript("OnMouseUp",function() end)
 end
 -- Weapon and Defense bars open the character Skills tab, not the professions book.
+-- WoW Forever beta: clicking a character skill opens the Character pane.
+-- Selecting the Skills tab automatically is a future enhancement.
 local function openCharacterSkills()
- -- Load the Blizzard character UI before selecting its Skills pane.
- if type(CharacterFrame_LoadUI)=="function" then pcall(CharacterFrame_LoadUI) end
- if type(UIParentLoadAddOn)=="function" then pcall(UIParentLoadAddOn,"Blizzard_CharacterUI") end
- -- ToggleCharacter can silently succeed without opening a frame on this client;
- -- never treat pcall success alone as proof that the panel is visible.
- if not (CharacterFrame and CharacterFrame:IsShown()) then
-  if type(ToggleCharacter)=="function" then pcall(ToggleCharacter,"SkillFrame") end
+ if CharacterFrame and CharacterFrame:IsShown() then return end
+ if type(ToggleCharacter)=="function" then
+  pcall(ToggleCharacter,"PaperDollFrame")
  end
  if CharacterFrame and not CharacterFrame:IsShown() then
   if type(ShowUIPanel)=="function" then pcall(ShowUIPanel,CharacterFrame) end
   if not CharacterFrame:IsShown() then CharacterFrame:Show() end
  end
- if type(CharacterFrame_ShowSubFrame)=="function" then
-  pcall(CharacterFrame_ShowSubFrame,"SkillFrame")
- end
- if CharacterFrame and CharacterFrame:IsShown() and SkillFrame then
-  if type(PanelTemplates_SetTab)=="function" and CharacterFrameTab3 then
-   -- In the classic character UI, tab 3 is Skills.
-   pcall(PanelTemplates_SetTab,CharacterFrame,3)
-  end
-  SkillFrame:Show()
- end
- if not (CharacterFrame and CharacterFrame:IsShown()) then
-  chat("Unable to open Character panel; try the Character keybind (C).")
- end
 end
+
 -- Open the native crafting window when possible, otherwise the native professions book.
 local function openNativeProfession(name)
  if name ~= "Herbalism" and name ~= "Skinning" and name ~= "Mining" and name ~= "Fishing" and not weaponNames[name] then activeCraftProfession=name end
@@ -501,8 +486,7 @@ local function createBar(key)
   GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
   GameTooltip:AddLine(key)
   addRankTooltip(key,skills[key])
-  GameTooltip:AddLine(weaponNames[key] and "Left-click: Character Skills tab" or "Left-click: Open profession",0.85,0.9,0.7)
-  GameTooltip:AddLine("Right-click: recipe browser",0.85,0.8,0.6)
+  GameTooltip:AddLine(weaponNames[key] and "Left-click: Open Character pane (select Skills manually)" or "Left-click: Open profession",0.85,0.9,0.7)
   GameTooltip:AddLine("Alt+right-click: trainer directory",0.8,0.8,0.6)
   if hasTomTom() then GameTooltip:AddLine("Alt+left-click: optional TomTom waypoint",0.8,0.8,0.6) end
   GameTooltip:Show()
@@ -512,7 +496,7 @@ local function createBar(key)
   if button=="LeftButton" then if self.suppressClick then self.suppressClick=false elseif IsAltKeyDown and IsAltKeyDown() then (function() if hasTomTom() then waypointForProfession(key,skills[key]) else showTrainerDirectory(key) end end)() else if weaponNames[key] then openCharacterSkills() else openNativeProfession(key) end end end
   if button=="RightButton" then
    if IsAltKeyDown and IsAltKeyDown() then showTrainerDirectory(key)
-   elseif browser then if browser:IsShown() then browser:Hide() else browser:Show() end end
+   end
   end
  end)
  bars[key]=f
@@ -1394,12 +1378,11 @@ local function createSettings()
  groupLabelSize:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-456);settings.groupLabelSizeLabel=groupLabelSize
  makeButton(settings,"-",245,-448,42,function() PBFDB.groupLabelScale=math.max(0.7,math.floor((PBFDB.groupLabelScale-0.1)*10+0.5)/10);redraw();settings:refresh() end)
  makeButton(settings,"+",295,-448,42,function() PBFDB.groupLabelScale=math.min(2,math.floor((PBFDB.groupLabelScale+0.1)*10+0.5)/10);redraw();settings:refresh() end)
- makeButton(settings,"Recipe Browser",22,-543,180,function(self, arg1) settings:Hide();browser.refresh();browser:Show();focusFloatingWindow(browser) end)
- makeButton(settings,"Reset Positions",218,-543,180,function(self, arg1) PBFDB.positions={};setPosition(panel,"panel",0,80);redraw();chat("Bar positions reset") end)
+ makeButton(settings,"Reset Positions",120,-543,180,function(self, arg1) PBFDB.positions={};setPosition(panel,"panel",0,80);redraw();chat("Bar positions reset") end)
  makeButton(settings,"Choose Visible Bars",22,-493,376,function() barPicker:Show();barPicker:refresh() end)
  local note=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
  note:SetPoint("TOP",settings,"TOP",0,-591);note:SetWidth(375)
- note:SetText("Missing recipes, zone sources and trainer locations require verified server data.")
+ note:SetText("Beta: Recipe browsing is unavailable; it will return in a later release.")
  settings.refresh=function(self, arg1) settings.modeLabel:SetText("Display: "..PBFDB.mode)
   settings.widthLabel:SetText("Bar width: "..PBFDB.width)
   settings.barScaleLabel:SetText("Bar height scale: "..PBFDB.barScale)
@@ -1433,8 +1416,7 @@ local function createMinimapButton()
  border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
  minimapButton:RegisterForClicks("LeftButtonUp","RightButtonUp")
  minimapButton:RegisterForDrag("LeftButton")
- minimapButton:SetScript("OnClick",function(self, arg1) if arg1=="RightButton" then browser.refresh();if browser:IsShown() then browser:Hide() else browser:Show() end
-  else toggleSettings() end
+ minimapButton:SetScript("OnClick",function(self, arg1) toggleSettings()
  end)
  minimapButton:SetScript("OnDragStart",function(self, arg1) self.dragging=true end)
  minimapButton:SetScript("OnDragStop",function(self, arg1) self.dragging=false end)
@@ -1454,6 +1436,171 @@ local function createMinimapButton()
  minimapButton:SetScript("OnLeave",function(self, arg1) GameTooltip:Hide() end)
  placeMinimapButton()
 end
+-- Diagnostic only: enumerate live character UI descendants without assuming tab names.
+-- Run on Equipment and again on Skills; output is limited to avoid chat flooding.
+local function debugCharacterTabs()
+ local root=_G.CharacterFrame
+ if not root then chat("DEBUGTABS: CharacterFrame unavailable; open Character window first") return end
+ chat("DEBUGTABS: selectedTab="..tostring(root.selectedTab).." visible="..tostring(root:IsShown()))
+ local found,seen=0,0
+ local function walk(frame,depth)
+  if not frame or depth>5 or seen>=300 or found>=22 then return end
+  seen=seen+1
+  local name=(type(frame.GetName)=="function" and frame:GetName()) or "(unnamed)"
+  local textValue=nil
+  if type(frame.GetText)=="function" then
+   local ok,v=pcall(frame.GetText,frame)
+   if ok and type(v)=="string" and v~="" then textValue=v end
+  end
+  local hasClick=false
+  if type(frame.GetScript)=="function" then
+   local ok,v=pcall(frame.GetScript,frame,"OnClick")
+   hasClick=ok and type(v)=="function"
+  end
+  local lower=string.lower(tostring(name).." "..tostring(textValue or ""))
+  local relevant=hasClick or string.find(lower,"skill",1,true) or string.find(lower,"tab",1,true)
+  if relevant then
+   found=found+1
+   local visible=type(frame.IsShown)=="function" and frame:IsShown() or false
+   local id=type(frame.GetID)=="function" and frame:GetID() or "?"
+   chat("DT"..found.." d"..depth.." "..tostring(name).." id="..tostring(id).." shown="..tostring(visible).." click="..tostring(hasClick).." text="..tostring(textValue or "-"))
+  end
+  if type(frame.GetChildren)=="function" then
+   local children={frame:GetChildren()}
+   for i=1,#children do if found>=22 or seen>=300 then break end walk(children[i],depth+1) end
+  end
+ end
+ walk(root,0)
+ chat("DEBUGTABS: matched="..found.." scanned="..seen.." (run once on Equipment and once on Skills)")
+end
+-- Diagnostic only: report actual client navigation handlers without changing tabs.
+local function inspectCharacterUI()
+ local root=_G.CharacterFrame
+ if not root then chat("INSPECT: open the Character window first") return end
+ chat("INSPECT: selectedTab="..tostring(root.selectedTab).." shown="..tostring(root:IsShown()))
+ local names={"CharacterFrame","CharacterFrameModeTabs","CharacterFrameModeTab1","CharacterFrameModeTab3","PaperDollFrame","CharacterSkillsFrame","CharacterFrameTab3","SkillFrame"}
+ for _,name in ipairs(names) do
+  local f=_G[name]
+  if f then
+   local id="?";if type(f.GetID)=="function" then local ok,v=pcall(f.GetID,f);if ok then id=tostring(v) end end
+   local parent="-";if type(f.GetParent)=="function" then local ok,v=pcall(f.GetParent,f);if ok and v and type(v.GetName)=="function" then parent=tostring(v:GetName()) end end
+   local scripts={}
+   if type(f.GetScript)=="function" then
+    for _,event in ipairs({"OnClick","OnMouseDown","OnMouseUp","OnShow"}) do
+     local ok,v=pcall(f.GetScript,f,event)
+     if ok and type(v)=="function" then table.insert(scripts,event) end
+    end
+   end
+   chat("INSPECT "..name.." id="..id.." parent="..parent.." scripts="..table.concat(scripts,","))
+  else chat("INSPECT "..name.." = nil") end
+ end
+ local functions={"CharacterFrame_OnClick","CharacterFrameModeTab_OnClick","CharacterFrameModeTabs_OnClick","CharacterFrame_SelectTab","CharacterFrame_SetTab","CharacterFrame_Update","CharacterFrame_UpdateTabs","CharacterFrame_ShowSubFrame","PaperDollFrame_SetTab","PanelTemplates_SetTab","ToggleCharacter"}
+ for _,name in ipairs(functions) do if type(_G[name])=="function" then chat("INSPECT fn "..name.." = function") end end
+ chat("INSPECT: done; run once on Equipment and once on Skills")
+end
+-- Temporary character-tab trace; observes real mouse events without simulating clicks.
+local traceActive=false
+local traceWatch=nil
+local traceHooks={}
+local traceLastTab=nil
+local traceTicks=0
+local function traceTabValue()
+ local c=_G.CharacterFrame
+ return c and tostring(c.selectedTab) or "nil"
+end
+local function traceLog(message)
+ chat("TRACE: "..message.." selectedTab="..traceTabValue())
+end
+local function traceStart()
+ if traceActive then traceLog("already active; click Equipment then Skills") return end
+ local c=_G.CharacterFrame
+ if not c then chat("TRACE: open Character first") return end
+ traceActive=true
+ traceLastTab=traceTabValue()
+ local count=0
+ for i=1,6 do
+  local tab=_G["CharacterFrameModeTab"..i]
+  if tab and type(tab.GetScript)=="function" then
+   for _,event in ipairs({"OnMouseDown","OnMouseUp"}) do
+    local original=tab:GetScript(event)
+    if type(original)=="function" then
+     local index=i
+     local eventName=event
+     local function observer(self,button,...)
+      traceLog("tab"..index.." "..eventName.." button="..tostring(button))
+     end
+     if type(tab.HookScript)=="function" then
+      tab:HookScript(event,observer)
+      count=count+1
+     elseif type(tab.SetScript)=="function" then
+      -- Preserve the original behavior, then observe its result.
+      tab:SetScript(event,function(self,...)
+       original(self,...)
+       observer(self,...)
+      end)
+      count=count+1
+     end
+    end
+   end
+  end
+ end
+ traceWatch=CreateFrame("Frame")
+ traceWatch:SetScript("OnUpdate",function(self,elapsed)
+  if not traceActive then self:SetScript("OnUpdate",nil) return end
+  local current=traceTabValue()
+  if current~=traceLastTab then
+   traceLog("tab changed "..traceLastTab.." -> "..current)
+   traceLastTab=current
+  end
+ end)
+ traceLog("started; hooks="..count..". Physically click Equipment then Skills; /profbar traceoff to stop")
+end
+local function traceStop()
+ traceActive=false
+ if traceWatch then traceWatch:SetScript("OnUpdate",nil) end
+ traceLog("stopped (event observers remain inert until UI reload)")
+end
+-- Diagnostic: observe BEFORE and AFTER the original native tab handlers.
+-- Uses reversible wrappers rather than HookScript (which only runs after).
+local orderActive=false
+local orderHooks={}
+local function orderTab() return (_G.CharacterFrame and tostring(_G.CharacterFrame.selectedTab)) or "nil" end
+local function orderStart()
+ if orderActive then chat("ORDER: already active; use /profbar orderoff first") return end
+ local count=0
+ for i=1,6 do
+  local tab=_G["CharacterFrameModeTab"..i]
+  if tab and type(tab.GetScript)=="function" and type(tab.SetScript)=="function" then
+   for _,event in ipairs({"OnMouseDown","OnMouseUp"}) do
+    local original=tab:GetScript(event)
+    if type(original)=="function" then
+     local index,ename=i,event
+     local wrapper=function(self,...)
+      local before=orderTab()
+      local ok,err=pcall(original,self,...)
+      local after=orderTab()
+      chat("ORDER: tab"..index.." "..ename.." "..before.." -> "..after.." original="..(ok and "OK" or "ERROR"))
+      if not ok then chat("ORDER ERROR: "..tostring(err)) end
+     end
+     table.insert(orderHooks,{tab=tab,event=event,original=original,wrapper=wrapper})
+     tab:SetScript(event,wrapper)
+     count=count+1
+    end
+   end
+  end
+ end
+ orderActive=true
+ chat("ORDER: monitoring "..count.." handlers. Click Equipment then Skills; /profbar orderoff to restore")
+end
+local function orderStop()
+ if not orderActive then chat("ORDER: not active") return end
+ for _,h in ipairs(orderHooks) do
+  if h.tab:GetScript(h.event)==h.wrapper then h.tab:SetScript(h.event,h.original) end
+ end
+ orderHooks={}
+ orderActive=false
+ chat("ORDER: stopped; original handlers restored where unchanged")
+end
 local function command(msg)
  msg=string.lower(msg or "")
  if msg=="" or msg=="help" or msg=="settings" then toggleSettings()
@@ -1461,13 +1608,19 @@ local function command(msg)
   local id=tonumber(string.match(msg,"^wowhead%s+(%d+)$"))
   if id and id>0 and math.floor(id)==id then chat("Forever recipe lookup: https://www.wowhead.com/forever/spell="..id.." (verify this ID is a spell/recipe ID)")
   else chat("Usage: /profbar wowhead <recipe ID> (copy URL from chat)") end
+ elseif msg=="debugtabs" then debugCharacterTabs()
+ elseif msg=="inspectui" then inspectCharacterUI()
+ elseif msg=="trace" then traceStart()
+ elseif msg=="traceoff" then traceStop()
+ elseif msg=="ordertrace" then orderStart()
+ elseif msg=="orderoff" then orderStop()
  elseif msg=="capture" then captureRecipeSnapshot()
  elseif msg=="captures" then
   local snapshots=PBFAccountDB and PBFAccountDB.recipeCatalogs or {}
   local total=0
   for name,data in pairs(snapshots) do chat(name..": "..tostring(data.count or #(data.recipes or {})).." saved recipes");total=total+1 end
   if total==0 then chat("No saved recipes yet. Open a crafting profession to collect them automatically.") end
- elseif msg=="recipes" then if browser:IsShown() then browser:Hide() else browser.refresh();browser:Show();focusFloatingWindow(browser) end
+ elseif msg=="recipes" then chat("Recipe Browser is unavailable in this beta.")
  elseif msg=="minimap" then PBFDB.minimapHidden=not PBFDB.minimapHidden;placeMinimapButton();chat("Minimap icon "..(PBFDB.minimapHidden and "hidden" or "shown"))
  elseif msg=="mode compact" or msg=="mode individual" then PBFDB.mode=string.sub(msg,6);redraw();chat("Mode: "..PBFDB.mode)
  elseif msg=="weapons on" or msg=="weapons off" then PBFDB.weapons=(msg=="weapons on");scanSkills(true)
@@ -1497,13 +1650,13 @@ local function command(msg)
   local n=string.match(msg,"^craft%s+(.+)$")
   if professions[n] then activeCraftProfession=n;scanRecipes();chat("Recipe scan labeled: "..n) else chat("Unknown profession: "..tostring(n)) end
  elseif msg=="debug" then
-  chat("Version 1.1.27; scan source: "..scanSource.."; bars: "..tostring(#sortedKeys(skills)).."; locked: "..tostring(PBFDB.locked).."; mode: "..PBFDB.mode)
+  chat("Version 1.0.0-beta.2; scan source: "..scanSource.."; bars: "..tostring(#sortedKeys(skills)).."; locked: "..tostring(PBFDB.locked).."; mode: "..PBFDB.mode)
   chat("Recipe scan: "..recipeScanSource.."; modern recipe API="..tostring(C_TradeSkillUI and type(C_TradeSkillUI.GetAllRecipeIDs)))
   chat("GetProfessions="..tostring(type(GetProfessions)).." GetProfessionInfo="..tostring(type(GetProfessionInfo)).." C_TradeSkillUI="..tostring(type(C_TradeSkillUI)))
   chat("Weapon API: C_SkillInfo="..tostring(type(C_SkillInfo)).." GetNumSkillLines="..tostring(type(GetNumSkillLines)))
   for name,v in pairs(skills) do chat(name.." "..v.value.."/"..v.max) end
  elseif msg=="reset" then PBFDB.positions={};setPosition(panel,"panel",0,80);redraw();chat("Positions reset")
- else chat("Use /profbar to open settings, /profbar recipes, or /profbar minimap") end
+ else chat("Use /profbar to open settings or /profbar minimap") end
 end
 -- Register slash commands immediately so they work even if an initialization event was missed.
 SLASH_PBF1="/profbar"
@@ -1513,7 +1666,7 @@ local initialized=false
 local function initialize()
  if initialized then return end
  initialized=true
- defaults();seedVerifiedCatalogs();loadFirstSavedProfession();createPanel();createBrowser();if PBFCreateCatalogButton then PBFCreateCatalogButton(browser) end;createBarPicker();createSettings();createMinimapButton();scanSkills(true)
+ defaults();seedVerifiedCatalogs();loadFirstSavedProfession();createPanel();createBrowser();createBarPicker();createSettings();createMinimapButton();scanSkills(true)
  chat("Loaded. Left-click minimap icon for settings; /profbar opens settings.")
 end
 -- Forever uses a modern client; legacy profession events may not exist.
