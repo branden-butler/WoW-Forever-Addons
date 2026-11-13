@@ -1,45 +1,23 @@
 # ProfessionBars Forever
 
-**Version:** 1.0  
-**Game:** WoW Forever
+**First public beta:** 1.0.0-beta.1  
+**Supported game:** WoW Forever
 
-An addon for tracking profession and character skill progress with customizable bars and recipe-browsing tools.
+Configurable progress bars for primary and secondary professions, Defense, and weapon skills. Includes compact grouped and individual layouts, category headings, bar size and opacity controls, and a minimap launcher.
 
-## Features
+## Download and install
+Download the ZIP from the [GitHub Releases page](https://github.com/branden-butler/WoW-Forever-Addons/releases), extract the `ProfessionBarsForever` folder into your WoW Forever `Interface/AddOns/` directory, and restart the game or enter `/reload`.
 
-- **Profession and skill bars:** Track primary professions, secondary professions, Defense, and weapon skills.
-- **Display modes:** Use a compact grouped panel or individual bars.
-- **Group headings:** Fixed category order (Primary Professions, Secondary Professions, Skills), optional labels, and adjustable label sizes.
-- **Appearance controls:** Adjust bar dimensions, opacity, panel appearance, and title visibility.
-- **Recipe Collection:** Browse learned and missing recipes and trainer information.
-- **Client Catalog (Preview):** Search recipes extracted from client data.
-- **Character skill shortcuts:** Clicking a character skill bar is intended to open the Character → Skills tab.
+The manifest should be at `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc`.
 
-## Installation
+Use `/profbar` or the minimap launcher to configure the addon.
 
-1. Download the addon ZIP and extract the `ProfessionBarsForever` directory.
-2. Copy that directory into your WoW Forever `Interface/AddOns/` folder.
-3. Confirm the file exists at `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc`.
-4. Restart the game or reload the interface.
+## Beta limitations
+- Clicking a character skill bar opens the Character pane; select **Skills** manually. Automatic Skills-tab navigation is a future enhancement.
+- The Recipe Browser and Client Catalog are intentionally hidden while being improved.
+- Official WoW Classic and Retail compatibility is planned but not included in this build.
 
-## Configuration
+## Help test
+See the [beta testing checklist](BETA_TESTING.md) and [changelog](CHANGELOG.md). Report bugs through [GitHub Issues](https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose).
 
-Use the in-game settings or enter `/profbar` in chat.
-
-## Files
-
-- `ProfessionBarsForever.toc` — addon manifest and load order
-- `ProfessionBarsForever.lua` — main addon and bar UI
-- `CatalogUI.lua`, `CatalogData.lua` — client catalog UI and data
-- `RecipeSources.lua`, `SeedCooking.lua`, `TrainerData.lua` — recipe and trainer information
-- `ProfessionIcon.tga` — addon icon
-- `TRAINER_DATA.csv` — supporting trainer data
-
-## Known limitations
-
-- The **Client Catalog** is a preview; not all candidate recipes have been independently verified.
-- Opening the Character → Skills tab from a skill bar still needs confirmation in-game.
-
-## Versioning
-
-**v1.0** is the initial repository release label for the latest developed addon build; it does not represent a rollback to older code.
+This is a beta release. Please report any Lua errors or unexpected behavior.
