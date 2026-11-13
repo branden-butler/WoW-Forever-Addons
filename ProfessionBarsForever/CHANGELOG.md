@@ -1,18 +1,20 @@
 # Changelog — ProfessionBars Forever
 
-## v1.0.0-beta.1 — 2026-11-12
+## 1.0.0-beta.1 — First public beta (2026-11-12)
 
-First community beta, based on the previously developed v1.1.63 preview build and relabeled for this repository.
+This is the first **public** beta release. Earlier beta-numbered ZIPs were internal troubleshooting builds and were not published releases.
 
-### Features
-- Primary and secondary profession progress bars and character skill bars
+### Included
+- Progress bars for primary and secondary professions and character skills
 - Compact grouped and individual layouts
-- Adjustable category headings, bar dimensions, opacity and panel title visibility
-- Recipe Collection and Client Catalog (Preview)
+- Adjustable category headings, bar dimensions, opacity, and visibility
+- Settings and minimap controls
+- Clicking Defense or a weapon skill opens the Character pane
 
-### Known issues and limitations
-- Clicking a skill bar to open Character → Skills still requires in-game confirmation.
-- Client Catalog recipes have not all been independently verified.
-- This build targets WoW Forever only; official Classic and Retail support are not yet tested.
+### Deferred features
+- Select the Skills tab manually after opening the Character pane; automatic tab navigation is a future enhancement.
+- Recipe Browser and Client Catalog are hidden while being improved, including their right-click entry points.
+- Official WoW Classic and Retail compatibility are not yet supported.
 
-Report issues using the repository bug report template.
+### Beta feedback
+Please use the [bug report form](https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose) and include your client build, steps to reproduce, and Lua errors.
