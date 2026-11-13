@@ -1,28 +1,32 @@
-# ProfessionBars Forever — Beta Testing
+# ProfessionBars Forever — Public Beta 1 Testing
 
-**Target:** WoW Forever  
-**Version:** v1.0.0-beta.1
+**Version:** 1.0.0-beta.1  
+**Client:** WoW Forever only
 
-Install the `ProfessionBarsForever` folder under `Interface/AddOns/`. The `.toc` file must be directly inside it. Back up existing saved variables before replacing an older version.
+## Install
+1. Download the ZIP attached to the GitHub pre-release.
+2. Extract the `ProfessionBarsForever` folder to `Interface/AddOns/`.
+3. Confirm `Interface/AddOns/ProfessionBarsForever/ProfessionBarsForever.toc` exists.
+4. Restart the game or enter `/reload`.
+
+Back up your existing saved settings before upgrading.
 
 ## Checklist
+- [ ] Addon loads without Lua errors on login or `/reload`.
+- [ ] Primary and secondary profession bars display correct values.
+- [ ] Defense and weapon skill bars display correct values.
+- [ ] Bars update after skill gains.
+- [ ] Compact grouped and individual modes work.
+- [ ] Category order and optional headings display correctly.
+- [ ] Heading sizes, bar dimensions, opacity, and visibility settings work.
+- [ ] Settings persist after reloading and relogging.
+- [ ] Clicking a character skill opens the Character pane (select Skills manually).
+- [ ] Recipe Browser button is absent from settings.
+- [ ] Right-clicking a bar, panel, or minimap icon does not open Recipe Browser.
+- [ ] Minimap and settings controls work.
 
-- [ ] Addon loads without Lua errors on login and `/reload`
-- [ ] Primary and secondary profession bars display and update correctly
-- [ ] Defense and weapon skill bars display and update correctly
-- [ ] Compact grouping order remains Primary, Secondary, Skills
-- [ ] Group headings can be hidden without changing the order
-- [ ] Group heading sizes (70–200%) don't overlap or leave excessive gaps
-- [ ] Individual and compact display modes work
-- [ ] Size, opacity, title and hidden-bar settings persist after relogging
-- [ ] Clicking a profession bar opens its profession interface
-- [ ] Clicking Defense or a weapon skill opens Character → Skills
-- [ ] Recipe Collection opens, filters, and scrolls correctly
-- [ ] Client Catalog search, filters, and scrolling work smoothly
-- [ ] No Lua errors or UI freezes during normal use
+## Known limitations
+Automatic Skills-tab navigation and recipe browsing are deferred. Official Classic and Retail are not supported by this beta.
 
-## Reporting problems
-
-Open a [new GitHub issue](https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose) and select the bug report template. Include addon version, WoW Forever build, steps to reproduce, expected versus actual behavior, and Lua errors or screenshots when available. Please remove personal information from logs.
-
-The Client Catalog remains a preview; report missing, duplicated, or unobtainable recipes.
+## Report bugs
+[Open a bug report](https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose) with addon version, WoW Forever build, steps to reproduce, expected and actual results, and any Lua errors.
