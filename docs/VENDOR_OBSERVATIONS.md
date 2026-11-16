@@ -66,3 +66,13 @@ In-game acceptance is still required on Forever:
 5. Export and inspect item/NPC IDs, contextual prices and optional observer location.
 6. Reload, confirm records persist, then disable collection and verify no new records.
 7. Confirm Recipe Finder's learned/missing status remains unchanged.
+
+## Recipe-item matching (provisional)
+
+Already-collected class-9 recipe items are matched at export/display time against the bundled English client catalog. English Recipe, Pattern, Plans, Schematic and Formula prefixes are removed; only a unique exact normalized name yields a candidate. No purchase or relearning is required. Non-English observations, unknown names and ambiguous matches remain unresolved. Unresolved catalog fallback names are excluded.
+
+Exports add mappingStatus, candidateSpellID and candidateProfession for recipe items. These additive schema-1 fields are derived candidates, not game-confirmed item-to-taught-spell evidence. Existing saved observations need no migration and collection keys remain unchanged.
+
+Selecting a recipe in Recipe Finder shows up to two observed vendor candidates from the current client build, labeled “name match only.” This does not overwrite documented sources, learning requirements, or known/missing status. Vendor inventory is directly observed; its association with a crafting spell remains provisional. Reopen Recipe Finder after visiting a vendor to refresh the display.
+
+Generic item-use spell IDs are not treated as learned crafting spell IDs. A reliable client item-to-taught-spell relationship still needs separate verification.

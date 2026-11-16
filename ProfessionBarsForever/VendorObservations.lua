@@ -175,6 +175,71 @@ local function start()
   C_Timer.After(delay,function() if token==generation then schedule() end end)
  end
 end
+
+-- Name matching is a review aid, never evidence of the spell an item teaches.
+-- Resolve at read/export time so observations collected before this feature also work.
+local function recipeCandidate(observation)
+ if type(observation)~="table" or observation.itemClassID~=9 then return nil,"not_recipe" end
+ if observation.locale~="enUS" and observation.locale~="enGB" then return nil,"unsupported_locale" end
+ local itemName=observation.itemName
+ if type(itemName)~="string" then return nil,"unmatched" end
+ local wanted
+ for _,prefix in ipairs({"Recipe:","Pattern:","Plans:","Schematic:","Formula:"}) do
+  if itemName:sub(1,#prefix)==prefix then wanted=itemName:sub(#prefix+1);break end
+ end
+ if not wanted then return nil,"unmatched" end
+ local function normalize(name)
+  return (name:gsub("^%d+:%s*",""):gsub("^%s+",""):gsub("%s+$",""):gsub("%s+"," "):lower())
+ end
+ wanted=normalize(wanted)
+ local catalog=PBFClientCatalog70862
+ if type(catalog)~="table" or type(catalog.professions)~="table" then return nil,"catalog_unavailable" end
+ local found,profession
+ for prof,rows in pairs(catalog.professions) do
+  for _,row in ipairs(rows) do
+   if row[5]~=3 and type(row[4])=="string" and normalize(row[4])==wanted then
+    if found and (found~=row[1] or profession~=prof) then return nil,"ambiguous" end
+    found,profession=row[1],prof
+   end
+  end
+ end
+ if found then return found,"unique_name_candidate",profession end
+ return nil,"unmatched"
+end
+function Collector:GetRecipeCandidate(observation)
+ return recipeCandidate(observation)
+end
+function Collector:GetVendorCandidateSummary(spellID)
+ local d=db();if not d then return end
+ local _,build=GetBuildInfo()
+ local matches,seen={},{}
+ for _,saved in pairs(d.records) do
+  local r=type(saved)=="table" and clean(saved.data)
+  if r and r.clientBuild==tostring(build) then
+   local candidate,status=recipeCandidate(r)
+   if candidate==spellID and status=="unique_name_candidate" then
+    local identity=tostring(r.npcID)..":"..r.itemID
+    if not seen[identity] then
+     seen[identity]=true
+     matches[#matches+1]={npcID=r.npcID,itemID=r.itemID,name=r.npcName or ("NPC "..r.npcID)}
+    end
+   end
+  end
+ end
+ if #matches==0 then return end
+ table.sort(matches,function(a,b)
+  if a.npcID~=b.npcID then return a.npcID<b.npcID end
+  return a.itemID<b.itemID
+ end)
+ local lines={"\n\n|cffffaa55Observed vendor candidates (name match only):|r"}
+ for i=1,math.min(2,#matches) do
+  local r=matches[i]
+  lines[#lines+1]=r.name.." (NPC "..r.npcID..", recipe item "..r.itemID..")"
+ end
+ if #matches>2 then lines[#lines+1]="+"..(#matches-2).." more; see /pbfdata export" end
+ return table.concat(lines,"\n")
+end
+
 function Collector:GetExport(page)
  local d=db();if not d then return nil,"Observation database unavailable or from a newer schema." end
  local keys={}
@@ -189,6 +254,11 @@ function Collector:GetExport(page)
   if type(saved)=="table" then
    local r=clean(saved.data)
    if r then
+    if r.itemClassID==9 then
+     local id,status,profession=recipeCandidate(r)
+     r.mappingStatus=status
+     if id then r.candidateSpellID=id;r.candidateProfession=profession end
+    end
     r.firstSeen=positive(saved.firstSeen);r.lastSeen=positive(saved.lastSeen)
     r.observations=positive(saved.observations) or 1
     rows[#rows+1]=r

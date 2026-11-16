@@ -125,3 +125,39 @@ event("MERCHANT_SHOW");flush()
 assert(PBFObservationDB.schemaVersion==99 and PBFObservationDB.records.keep)
 assert(not PBFObservationCollector:GetExport())
 print("Vendor observation tests passed")
+
+
+-- Matching works on already-collected recipe items, with no purchase/learning event.
+PBFClientCatalog70862={professions={Cooking={
+ {7753,1,1,"Longjaw Mud Snapper",1,{4592}},
+ {7828,2,1,"Rainbow Fin Albacore",1,{6887}}
+}}}
+local recipe={kind="vendor_item",clientBuild="70862",locale="enUS",
+ itemClassID=9,itemID=6328,itemName="Recipe: Longjaw Mud Snapper",npcID=5748,npcName="Killian Sanatha"}
+local id,status,profession=PBFObservationCollector:GetRecipeCandidate(recipe)
+assert(id==7753 and status=="unique_name_candidate" and profession=="Cooking")
+PBFObservationDB={schemaVersion=1,records={test={data=recipe}},recordCount=1}
+local export=PBFObservationCollector:GetExport(1)
+assert(export:find('"candidateSpellID":7753',1,true))
+assert(export:find('"mappingStatus":"unique_name_candidate"',1,true))
+assert(PBFObservationCollector:GetVendorCandidateSummary(7753):find("Killian Sanatha",1,true))
+-- Same ID repeated is not ambiguity; distinct IDs with same name are.
+table.insert(PBFClientCatalog70862.professions.Cooking,{7753,3,1,"Longjaw Mud Snapper",1,{4592}})
+assert(PBFObservationCollector:GetRecipeCandidate(recipe)==7753)
+table.insert(PBFClientCatalog70862.professions.Cooking,{999,4,1,"Longjaw Mud Snapper",1,{4592}})
+id,status=PBFObservationCollector:GetRecipeCandidate(recipe)
+assert(id==nil and status=="ambiguous")
+assert(not PBFObservationCollector:GetVendorCandidateSummary(7753))
+PBFClientCatalog70862.professions.Cooking[4]=nil
+recipe.locale="esMX"
+id,status=PBFObservationCollector:GetRecipeCandidate(recipe)
+assert(id==nil and status=="unsupported_locale")
+recipe.locale="enUS";recipe.itemClassID=7
+assert(not PBFObservationCollector:GetRecipeCandidate(recipe))
+recipe.itemClassID=9;recipe.itemName="Recipe: Not In Catalog"
+id,status=PBFObservationCollector:GetRecipeCandidate(recipe)
+assert(id==nil and status=="unmatched")
+-- Do not show a vendor observation from a different build.
+recipe.itemName="Recipe: Longjaw Mud Snapper";recipe.clientBuild="other"
+assert(not PBFObservationCollector:GetVendorCandidateSummary(7753))
+print("Recipe candidate matching tests passed")

@@ -1329,6 +1329,10 @@ local function createBrowser()
     text=text.."\nSkill-up range: "..c.low.."-"..c.high.." |cff999999(client data, unverified)|r"
    end
    text=text.."\n\nSource: "..source.."\nTrainer / Vendor / Mob: "..(selected.sourceDetails or "Not verified").."\nLocation: "..(selected.sourceLocation or "Not verified")
+   if PBFObservationCollector and PBFObservationCollector.GetVendorCandidateSummary then
+    local observed=PBFObservationCollector:GetVendorCandidateSummary(selected.id)
+    if observed then text=text..observed end
+   end
    text=text.."\n\nSpell ID: "..selected.id
    if c and type(c.outputs)=="table" and #c.outputs>0 then text=text.."\nOutput item ID: "..table.concat(c.outputs,", ") end
    text=text.."\n|cff999999Look up: /profbar wowhead "..selected.id.."|r"
