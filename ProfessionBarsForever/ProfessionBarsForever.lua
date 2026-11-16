@@ -788,10 +788,16 @@ end
 -- an existing catalog with an empty or incomplete API response.
 local function persistRecipes(profession,list)
  if not professions[profession] or type(list)~="table" or #list==0 then return false end
+ local filtered={}
+ for _,r in ipairs(list) do
+  if PBFCharacterStore:BelongsToProfession(profession,r.id) then filtered[#filtered+1]=r end
+ end
+ list=filtered
+ if #list==0 then return false end
  local existing=PBFAccountDB.recipeCatalogs[profession]
  local merged={}
  if existing and type(existing.recipes)=="table" then
-  for _,r in ipairs(existing.recipes) do if type(r.id)=="number" then merged[r.id]={id=r.id,name=r.name,requiredSkill=r.requiredSkill} end end
+  for _,r in ipairs(existing.recipes) do if type(r.id)=="number" and PBFCharacterStore:BelongsToProfession(profession,r.id) then merged[r.id]={id=r.id,name=r.name,requiredSkill=r.requiredSkill} end end
  end
  -- Learned flags are merged per recipe ID (true/false). IDs the API did not report
  -- keep their previous value, so a partial load never turns known recipes into missing ones.
@@ -844,7 +850,7 @@ local function loadSavedRecipeSnapshot(profession)
  local list,index={},{}
  if type(snapshot)=="table" and type(snapshot.recipes)=="table" then
   for _,r in ipairs(snapshot.recipes) do
-   if type(r.id)=="number" and type(r.name)=="string" and not index[r.id] then
+   if type(r.id)=="number" and type(r.name)=="string" and not index[r.id] and PBFCharacterStore:BelongsToProfession(profession,r.id) then
     local meta=recipeMetadata(r.id,r.name)
     local entry={id=r.id,name=r.name,requiredSkill=r.requiredSkill or meta.requiredSkill,source=meta.source,sourceDetails=meta.details,sourceLocation=meta.location}
     index[r.id]=entry;list[#list+1]=entry
@@ -927,42 +933,38 @@ local function scanRecipes()
  end
  local ok,ids=pcall(modern.GetAllRecipeIDs)
  if not ok or type(ids)~="table" or #ids==0 then return end
- -- Identify the profession from unique catalog associations, not a stale last-opened bar.
- local idProf={}
- for prof,rows in pairs(PBFClientCatalog70862 and PBFClientCatalog70862.professions or {}) do
-  for _,row in ipairs(rows) do
-   if idProf[row[1]] and idProf[row[1]]~=prof then idProf[row[1]]=false
-   elseif idProf[row[1]]==nil then idProf[row[1]]=prof end
-  end
- end
- local matches={}
- for _,id in ipairs(ids) do if idProf[id] then matches[idProf[id]]=true end end
- local profession,ambiguous
- for prof in pairs(matches) do if profession then ambiguous=true end;profession=prof end
- if ambiguous then return end
- profession=profession or currentCraftName()
- if not professions[profession] then return end
- local list,known={},{}
+ -- Forever may expose multiple professions in one GetAllRecipeIDs response.
+ -- Route each spell independently; never label an entire response from the selected tab.
+ local list={}
  local found,missing=0,0
  for _,id in ipairs(ids) do
   local good,info=pcall(modern.GetRecipeInfo,id)
   if good and type(info)=="table" and type(info.name)=="string" and info.name~="" then
-   -- nil means unknown/loading, not missing.
    local learned
    if type(info.learned)=="boolean" then learned=info.learned end
    list[#list+1]={id=id,name=info.name,learned=learned,requiredSkill=recipeRequiredSkill(info,id,modern)}
-   if learned==true then known[info.name]=true;found=found+1
-   elseif learned==false then missing=missing+1 end
+   if learned==true then found=found+1 elseif learned==false then missing=missing+1 end
   end
  end
  if #list==0 then return end
- persistRecipes(profession,list)
- for name in pairs(known) do PBFDB.known[profession]=PBFDB.known[profession] or {};PBFDB.known[profession][name]=true end
- PBFDB.scanned[profession]=true
- -- A background current-character scan must not switch an alt being inspected.
- if viewingCurrentCharacter() then loadSavedRecipeSnapshot(profession)
- elseif liveRecipes.profession then loadSavedRecipeSnapshot(liveRecipes.profession) end
- recipeScanSource="C_TradeSkillUI ("..found.." learned, "..missing.." unlearned; "..profession..")"
+ local groups,unknown=PBFCharacterStore:PartitionRecipes(list)
+ for profession,rows in pairs(groups) do
+  persistRecipes(profession,rows)
+  PBFDB.scanned[profession]=true
+ end
+ -- Preserve unclassified observations without putting them in the selected profession.
+ PBFAccountDB.unassignedRecipeRows=PBFAccountDB.unassignedRecipeRows or {}
+ local profile=PBFCharacterStore:Get()
+ profile.unassignedKnownByID=profile.unassignedKnownByID or {}
+ for _,r in ipairs(unknown) do
+  PBFAccountDB.unassignedRecipeRows[r.id]={id=r.id,name=r.name,requiredSkill=r.requiredSkill}
+  if type(r.learned)=="boolean" and (r.learned or profile.unassignedKnownByID[r.id]~=true) then
+   profile.unassignedKnownByID[r.id]=r.learned
+  end
+ end
+ -- Preserve the selected profession and selected character during a mixed scan.
+ if liveRecipes.profession then loadSavedRecipeSnapshot(liveRecipes.profession) end
+ recipeScanSource="C_TradeSkillUI ("..found.." learned, "..missing.." unlearned; per-spell profession routing)"
  if browser and browser:IsShown() then browser.refresh() end
 end
 local knownScanPending=false
@@ -1882,6 +1884,8 @@ local function initialize()
  initialized=true
  defaults()
  PBFCharacterStore:Initialize(PBFAccountDB,PBFDB,{guid=UnitGUID("player"),name=UnitName("player"),realm=GetRealmName(),faction=UnitFactionGroup("player")})
+ PBFCharacterStore:RepairRecipeBoundaries(PBFClientCatalog70862)
+ PBFDB.recipeKnownByID=PBFCharacterStore:Get().knownByID
  seedVerifiedCatalogs();loadFirstSavedProfession();createPanel();createBrowser();createBarPicker();createSettings();createMinimapButton();scanSkills(true);queueKnownSpellScan()
  chat("Loaded. Left-click minimap icon for settings; /profbar opens settings.")
 end

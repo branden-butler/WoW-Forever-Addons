@@ -115,7 +115,7 @@ function Store:ScanKnownSpells(catalog)
  for profession,data in pairs(self.account.recipeCatalogs or {}) do
   byProfession[profession]=byProfession[profession] or {}
   for _,row in ipairs(data.recipes or {}) do
-   if type(row.id)=="number" then byProfession[profession][row.id]=true end
+   if type(row.id)=="number" and self:BelongsToProfession(profession,row.id,catalog) then byProfession[profession][row.id]=true end
   end
  end
  local changed=0
@@ -137,4 +137,80 @@ function Store:ScanKnownSpells(catalog)
  end
  p.lastBackgroundCheck=timestamp()
  return changed,"spell_queries"
+end
+
+-- The bundled spell-to-profession associations define list boundaries.
+-- Shared API catalogs are not trusted to define a profession.
+function Store:RecipeOwners(id,catalog)
+ catalog=catalog or PBFClientCatalog70862
+ if not catalog or type(catalog.professions)~="table" then return nil end
+ if self.boundaryCatalog~=catalog then
+  self.boundaryCatalog=catalog;self.recipeOwners={}
+  for profession,rows in pairs(catalog.professions) do
+   for _,row in ipairs(rows) do
+    self.recipeOwners[row[1]]=self.recipeOwners[row[1]] or {}
+    self.recipeOwners[row[1]][profession]=true
+   end
+  end
+ end
+ return self.recipeOwners[id]
+end
+function Store:BelongsToProfession(profession,id,catalog)
+ local owners=self:RecipeOwners(id,catalog)
+ return owners and owners[profession]==true or false
+end
+function Store:PartitionRecipes(list,catalog)
+ local groups,unknown={},{}
+ for _,r in ipairs(list or {}) do
+  local owners=self:RecipeOwners(r.id,catalog)
+  if owners then
+   for profession in pairs(owners) do
+    groups[profession]=groups[profession] or {}
+    groups[profession][#groups[profession]+1]=r
+   end
+  else unknown[#unknown+1]=r end
+ end
+ return groups,unknown
+end
+function Store:RepairRecipeBoundaries(catalog)
+ if not self.account or not catalog or type(catalog.professions)~="table" then return end
+ local account=self.account
+ local rows={}
+ for _,data in pairs(account.recipeCatalogs or {}) do
+  for _,r in ipairs(data.recipes or {}) do rows[#rows+1]=r end
+ end
+ for _,r in pairs(account.unassignedRecipeRows or {}) do rows[#rows+1]=r end
+ local groups,unknown=self:PartitionRecipes(rows,catalog)
+ account.unassignedRecipeRows={}
+ for _,r in ipairs(unknown) do account.unassignedRecipeRows[r.id]=copy(r) end
+ account.recipeCatalogs={}
+ for profession,list in pairs(groups) do
+  local unique={}
+  for _,r in ipairs(list) do unique[r.id]=r end
+  local sorted={}
+  for _,r in pairs(unique) do sorted[#sorted+1]=r end
+  table.sort(sorted,function(a,b) return a.id<b.id end)
+  account.recipeCatalogs[profession]={profession=profession,recipes=sorted,count=#sorted}
+ end
+ for _,p in pairs(account.characters or {}) do
+  local all={}
+  local function collect(flags)
+   for id,known in pairs(flags or {}) do
+    if type(known)=="boolean" and (known or all[id]~=true) then all[id]=known end
+   end
+  end
+  for _,flags in pairs(p.knownByID or {}) do collect(flags) end
+  collect(p.unassignedKnownByID)
+  p.knownByID={};p.unassignedKnownByID={}
+  for id,known in pairs(all) do
+   local owners=self:RecipeOwners(id,catalog)
+   if owners then
+    for profession in pairs(owners) do
+     p.knownByID[profession]=p.knownByID[profession] or {}
+     p.knownByID[profession][id]=known
+    end
+   else p.unassignedKnownByID[id]=known end
+  end
+ end
+ account.recipeBoundaryVersion=1
 end

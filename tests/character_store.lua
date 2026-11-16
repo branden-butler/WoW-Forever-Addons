@@ -53,7 +53,7 @@ local info={name="Test Recipe",learned=true}
 local linked=false
 local env=setmetatable({
  PBFDB=legacy,PBFAccountDB=account,PBFCharacterStore=store,
- PBFClientCatalog70862={professions={Alchemy={{1,1,1,"Test Recipe",1,{100}}}}},
+ PBFClientCatalog70862={professions={Alchemy={{1,1,1,"Test Recipe",1,{100}},{6,2,1,"Missing",1,{101}}},Tailoring={{10,3,1,"Tailoring Test",1,{102}}}}},
  professions={Alchemy=true,Tailoring=true},
  recipeMetadata=function() return {} end,
  viewedProfile=function() return store:Get(viewedKey) end,
@@ -69,6 +69,7 @@ local env=setmetatable({
   IsTradeSkillLinked=function() return linked end
  }
 },{__index=_G})
+_G.PBFClientCatalog70862=env.PBFClientCatalog70862
 legacy.known={};legacy.scanned={}
 account.recipeCatalogs={}
 local persist=extract("local function persistRecipes(","-- Seed only verified")
@@ -135,10 +136,62 @@ IsSpellKnown=function() error("not available on this build") end
 local count=store:ScanKnownSpells(catalog);assert(count==0)
 IsSpellKnown=nil
 local _,status=store:ScanKnownSpells(catalog);assert(status=="unavailable")
--- Query recipes captured by API but absent from the bundled client catalog too.
+-- Unclassified shared recipes must not acquire profession membership from a mislabeled cache.
 account.recipeCatalogs.NewProfession={recipes={{id=456,name="New"}}}
 IsPlayerSpell=function(id) return id==456 end
 store:ScanKnownSpells(catalog)
-assert(store:Get().knownByID.NewProfession[456])
+assert(store:Get().knownByID.NewProfession==nil)
 IsPlayerSpell=nil
 print("Background known-spell tests passed")
+
+-- Reproduce the reported mixed Cooking list using real catalog spell IDs.
+dofile("ProfessionBarsForever/CatalogData.lua")
+local real=PBFClientCatalog70862
+assert(real and real.professions.Cooking)
+account.recipeCatalogs={
+ Cooking={recipes={
+  {id=7751,name="Brilliant Smallfish"},
+  {id=7934,name="Anti-Venom"},
+  {id=3276,name="Heavy Linen Bandage"},
+  {id=2331,name="Minor Mana Potion"},
+  {id=999999999,name="Unclassified craft"}}}
+}
+a.knownByID.Cooking={[7751]=true,[7934]=true,[3276]=false,[2331]=true,[999999999]=true}
+store:Get("Player-B").knownByID.Cooking={[7934]=false}
+store:RepairRecipeBoundaries(real)
+legacy.recipeKnownByID=a.knownByID
+assert(a.knownByID.Cooking[7751]==true)
+assert(a.knownByID.Cooking[7934]==nil)
+assert(a.knownByID["First Aid"][7934]==true)
+assert(a.knownByID["First Aid"][3276]==false)
+assert(a.knownByID.Alchemy[2331]==true)
+assert(a.unassignedKnownByID[999999999]==true)
+assert(account.unassignedRecipeRows[999999999])
+assert(store:Get("Player-B").knownByID["First Aid"][7934]==false,"repair crossed character boundaries")
+assert(#account.recipeCatalogs.Cooking.recipes==1)
+-- Repeated repair is idempotent and keeps unresolved evidence.
+store:RepairRecipeBoundaries(real)
+legacy.recipeKnownByID=a.knownByID
+assert(#account.recipeCatalogs.Cooking.recipes==1 and a.unassignedKnownByID[999999999])
+env.PBFClientCatalog70862=real
+env.professions.Cooking=true;env.professions["First Aid"]=true
+env.clientCatalogRows=function(p) return real.professions[p] end
+env.C_TradeSkillUI.GetAllRecipeIDs=function() return {7751,7934,3276,2331,999999999} end
+env.C_TradeSkillUI.GetRecipeInfo=function(id) return {name="Recipe "..id,learned=true} end
+open=true;linked=false;viewedKey=nil
+assert(api.load("Cooking"))
+api.scan()
+assert(api.get().profession=="Cooking","mixed scan switched selected profession")
+assert(a.knownByID.Cooking[7934]==nil,"mixed scan recontaminated Cooking")
+assert(a.knownByID["First Aid"][7934] and a.knownByID.Alchemy[2331])
+for _,r in ipairs(api.get().list) do assert(store:BelongsToProfession("Cooking",r.id,real)) end
+-- Recontaminate the shared cache deliberately: display and background still enforce boundaries.
+account.recipeCatalogs.Cooking.recipes[#account.recipeCatalogs.Cooking.recipes+1]={id=7934,name="Anti-Venom"}
+api.load("Cooking")
+for _,r in ipairs(api.get().list) do assert(r.id~=7934) end
+IsPlayerSpell=function(id) return id==7934 end
+store:ScanKnownSpells(real)
+assert(a.knownByID.Cooking[7934]==nil)
+assert(a.knownByID["First Aid"][7934])
+IsPlayerSpell=nil
+print("Real-catalog boundary repair, mixed scans and background regression tests passed")
