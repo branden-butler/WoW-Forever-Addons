@@ -130,7 +130,7 @@ print("Vendor observation tests passed")
 -- Matching works on already-collected recipe items, with no purchase/learning event.
 PBFClientCatalog70862={professions={Cooking={
  {7753,1,1,"Longjaw Mud Snapper",1,{4592}},
- {7828,2,1,"Rainbow Fin Albacore",1,{6887}}
+ {7827,2,1,"Rainbow Fin Albacore",1,{5095}}
 }}}
 local recipe={kind="vendor_item",clientBuild="70862",locale="enUS",
  itemClassID=9,itemID=6328,itemName="Recipe: Longjaw Mud Snapper",npcID=5748,npcName="Killian Sanatha"}
