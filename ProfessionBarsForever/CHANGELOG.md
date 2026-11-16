@@ -1,5 +1,18 @@
 # Changelog — ProfessionBars Forever
 
+## Unreleased
+
+### Added
+- Recipe Finder is back: right-click a profession bar or the minimap icon, `/profbar recipes`, or the settings button.
+- Browses the full client recipe catalog for each profession, merged with recipes scanned from your profession windows.
+- Known / Missing status per character, tracked by spell ID. Recipes not yet scanned show **Not Scanned**; recipes the game does not report show **Unverified**.
+- Upgrade line: next rank, skill needed, how to get it, and a trainer, with a **Trainer List** button. Unlearned professions list their starting trainers.
+- Client Catalog reachable again via `/pbfcatalog`, `/profbar catalog`, a Recipe Finder button, and settings.
+
+### Changed
+- Learned flags are merged per recipe, so a partial profession load can no longer mark known recipes as missing.
+- `/profbar capture` no longer saves unverified catalog candidates as scanned recipes.
+
 ## 1.0.0-beta.1 — First public beta (2026-11-12)
 
 This is the first **public** beta release. Earlier beta-numbered ZIPs were internal troubleshooting builds and were not published releases.

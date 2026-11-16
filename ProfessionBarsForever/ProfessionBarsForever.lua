@@ -8,6 +8,7 @@ local function recipeMetadata(id,name)
  return recipeSources[id] or (name and recipeSources[string.lower(name)]) or {}
 end
 local panel, browser, browserText, titleText, settings, minimapButton, barPicker
+local showRecipeFinder, toggleRecipeFinder -- assigned after the browser is defined
 local professions = {
  ["Alchemy"]=true,["Blacksmithing"]=true,["Enchanting"]=true,["Engineering"]=true,
  ["Herbalism"]=true,["Leatherworking"]=true,["Mining"]=true,["Skinning"]=true,
@@ -210,7 +211,8 @@ local trainerDirectoryOffset=0
 local function refreshTrainerDirectory()
  if not trainerDirectory or not trainerDirectoryProfession then return end
  local name=trainerDirectoryProfession
- local cap=nextTrainerCap(name,skills[name])
+ -- Unlearned professions list the trainers that teach the first rank (75 cap).
+ local cap=skills[name] and nextTrainerCap(name,skills[name]) or (not skills[name] and 75 or nil)
  local entries=cap and orderedTrainers(name,cap) or {}
  trainerDirectoryTitle:SetText("Trainer Directory - "..name)
  trainerDirectoryInfo:SetText(#entries.." matching locations | same-zone first | coordinates shown | TomTom optional")
@@ -487,6 +489,7 @@ local function createBar(key)
   GameTooltip:AddLine(key)
   addRankTooltip(key,skills[key])
   GameTooltip:AddLine(weaponNames[key] and "Left-click: Open Character pane (select Skills manually)" or "Left-click: Open profession",0.85,0.9,0.7)
+  if not weaponNames[key] then GameTooltip:AddLine("Right-click: Recipe Finder",0.85,0.9,0.7) end
   GameTooltip:AddLine("Alt+right-click: trainer directory",0.8,0.8,0.6)
   if hasTomTom() then GameTooltip:AddLine("Alt+left-click: optional TomTom waypoint",0.8,0.8,0.6) end
   GameTooltip:Show()
@@ -496,6 +499,7 @@ local function createBar(key)
   if button=="LeftButton" then if self.suppressClick then self.suppressClick=false elseif IsAltKeyDown and IsAltKeyDown() then (function() if hasTomTom() then waypointForProfession(key,skills[key]) else showTrainerDirectory(key) end end)() else if weaponNames[key] then openCharacterSkills() else openNativeProfession(key) end end end
   if button=="RightButton" then
    if IsAltKeyDown and IsAltKeyDown() then showTrainerDirectory(key)
+   elseif not weaponNames[key] and showRecipeFinder then showRecipeFinder(key)
    end
   end
  end)
@@ -777,23 +781,22 @@ local function persistRecipes(profession,list)
  if existing and type(existing.recipes)=="table" then
   for _,r in ipairs(existing.recipes) do if type(r.id)=="number" then merged[r.id]={id=r.id,name=r.name,requiredSkill=r.requiredSkill} end end
  end
- local known={}
+ -- Learned flags are merged per recipe ID (true/false). IDs the API did not report
+ -- keep their previous value, so a partial load never turns known recipes into missing ones.
+ PBFDB.recipeKnownByID=PBFDB.recipeKnownByID or {}
+ local flags=PBFDB.recipeKnownByID[profession] or {}
  for _,r in ipairs(list) do
   if type(r.id)=="number" and type(r.name)=="string" then
    local old=merged[r.id] or {}
    merged[r.id]={id=r.id,name=r.name,requiredSkill=r.requiredSkill or old.requiredSkill}
-   if r.learned then known[r.id]=true end
+   if r.learned~=nil then flags[r.id]=(r.learned==true) end
   end
  end
+ PBFDB.recipeKnownByID[profession]=flags
  local catalog={}
  for _,r in pairs(merged) do catalog[#catalog+1]=r end
  table.sort(catalog,function(a,b) return (a.name or "")<(b.name or "") end)
  PBFAccountDB.recipeCatalogs[profession]={profession=profession,recipes=catalog,count=#catalog}
- -- Learned status is updated only on a complete scan (not a partial load).
- if not existing or #list>=#(existing.recipes or {}) then
-  PBFDB.recipeKnownByID=PBFDB.recipeKnownByID or {}
-  PBFDB.recipeKnownByID[profession]=known
- end
  return true
 end
 -- Seed only verified data. Other professions remain visible without inventing recipe lists.
@@ -806,34 +809,85 @@ local function seedVerifiedCatalogs()
   PBFAccountDB.recipeCatalogs.Cooking={profession="Cooking",recipes=list,count=#list,seeded=true}
  end
 end
+-- Bundled client catalog rows for a profession (unverified candidates), or nil.
+local function clientCatalogRows(profession)
+ local db=PBFClientCatalog70862
+ return db and type(db.professions)=="table" and db.professions[profession] or nil
+end
+-- Imported fallback names may start with an output item ID ("13447: Elixir ...").
+local function catalogDisplayName(s)
+ return (tostring(s or ""):gsub("^%d+:%s*",""))
+end
+-- Build the Recipe Finder list: recipes scanned from this client (account-wide names)
+-- merged with the bundled client catalog, keyed by spell ID. Learned status comes only
+-- from this character's own profession scans; catalog data never marks anything learned.
 local function loadSavedRecipeSnapshot(profession)
  if not profession then return false end
  local shared=PBFAccountDB and PBFAccountDB.recipeCatalogs and PBFAccountDB.recipeCatalogs[profession]
  local old=PBFDB and PBFDB.recipeSnapshots and PBFDB.recipeSnapshots[profession]
  local snapshot=shared or old
- if type(snapshot)~="table" or type(snapshot.recipes)~="table" then return false end
- local list={}
- local known=PBFDB.recipeKnownByID and PBFDB.recipeKnownByID[profession]
- for _,r in ipairs(snapshot.recipes) do
-  if type(r.id)=="number" and type(r.name)=="string" then
-   local meta=recipeMetadata(r.id,r.name)
-   local learned=nil
-   if known then learned=(known[r.id]==true)
-   elseif old and old.recipes then
-    for _,prior in ipairs(old.recipes) do if prior.id==r.id then learned=(prior.learned==true);break end end
+ local known=PBFDB and PBFDB.recipeKnownByID and PBFDB.recipeKnownByID[profession]
+ local list,index={},{}
+ if type(snapshot)=="table" and type(snapshot.recipes)=="table" then
+  for _,r in ipairs(snapshot.recipes) do
+   if type(r.id)=="number" and type(r.name)=="string" and not index[r.id] then
+    local meta=recipeMetadata(r.id,r.name)
+    local entry={id=r.id,name=r.name,requiredSkill=r.requiredSkill or meta.requiredSkill,source=meta.source,sourceDetails=meta.details,sourceLocation=meta.location}
+    index[r.id]=entry;list[#list+1]=entry
    end
-   list[#list+1]={id=r.id,name=r.name,learned=learned,requiredSkill=r.requiredSkill or meta.requiredSkill,source=meta.source,sourceDetails=meta.details,sourceLocation=meta.location}
+  end
+ end
+ local clientRows=clientCatalogRows(profession)
+ if clientRows then
+  for _,c in ipairs(clientRows) do
+   local id=c[1]
+   if type(id)=="number" then
+    local entry=index[id]
+    if not entry then
+     local name=catalogDisplayName(c[4])
+     local meta=recipeMetadata(id,name)
+     entry={id=id,name=name,requiredSkill=meta.requiredSkill,source=meta.source,sourceDetails=meta.details,sourceLocation=meta.location,catalogOnly=true}
+     index[id]=entry;list[#list+1]=entry
+    end
+    -- Some spell IDs appear twice in the catalog; the first record wins.
+    if not entry.client then
+     entry.client={kind=c[3],nameEvidence=c[5],outputs=c[6],low=c[7],high=c[8],raw=c[9],associated=c[10]}
+    end
+   end
   end
  end
  if #list==0 then return false end
- table.sort(list,function(a,b) return a.name<b.name end)
+ local legacy
+ if not known and old and type(old.recipes)=="table" then
+  legacy={}
+  for _,prior in ipairs(old.recipes) do if type(prior.id)=="number" then legacy[prior.id]=(prior.learned==true) end end
+ end
+ for _,entry in ipairs(list) do
+  if known then
+   local v=known[entry.id]
+   if v~=nil then entry.learned=(v==true) else entry.unseen=true end
+  elseif legacy then
+   entry.learned=legacy[entry.id]
+  end
+ end
+ table.sort(list,function(a,b)
+  local na,nb=string.lower(a.name),string.lower(b.name)
+  if na~=nb then return na<nb end
+  return a.id<b.id
+ end)
  liveRecipes={profession=profession,list=list,fromSnapshot=true}
  return true
 end
 local function captureRecipeSnapshot()
- if liveRecipes.profession and liveRecipes.list and persistRecipes(liveRecipes.profession,liveRecipes.list) then
-  chat("Saved "..#liveRecipes.list.." recipes for "..liveRecipes.profession.." (automatic on profession open).")
- else chat("No identifiable profession data available to save yet.") end
+ if liveRecipes.profession and liveRecipes.list then
+  -- Never persist unverified catalog candidates as if they were scanned recipes.
+  local scanned={}
+  for _,r in ipairs(liveRecipes.list) do if not r.catalogOnly then scanned[#scanned+1]=r end end
+  if persistRecipes(liveRecipes.profession,scanned) then
+   chat("Saved "..#scanned.." recipes for "..liveRecipes.profession.." (automatic on profession open).");return
+  end
+ end
+ chat("No identifiable profession data available to save yet.")
 end
 local function loadFirstSavedProfession()
  if not PBFAccountDB or not PBFAccountDB.recipeCatalogs then return false end
@@ -874,6 +928,8 @@ local function scanRecipes()
     -- unlearned or belonged to a different scanned profession.
     PBFDB.known[profession]=known
     PBFDB.scanned[profession]=true
+    -- Rebuild the Recipe Finder list so scanned recipes merge with the client catalog.
+    if #list>0 then loadSavedRecipeSnapshot(profession) end
    end
    source="C_TradeSkillUI"
   end
@@ -904,6 +960,41 @@ local function makeButton(parent,label,x,y,w,callback)
  b:SetText(label); b:SetScript("OnClick",callback)
  return b
 end
+-- Upgrade summary for the Recipe Finder: next rank, skill needed, how to get it, and a
+-- trainer. Uses the same rank guide and trainer directory as the bar tooltips; Classic
+-- references stay labeled as such.
+local function upgradeSummary(name)
+ local guides=rankGuides[name]
+ if not guides then return "Upgrades: guide not verified for Forever." end
+ local skill=skills[name]
+ local rank,targetCap
+ local lines={}
+ if not skill then
+  targetCap=75
+  lines[1]="Not learned: visit a "..name.." trainer to learn it."
+ else
+  local capNow=tonumber(skill.max) or 0
+  local current=tonumber(skill.value) or 0
+  for _,g in ipairs(guides) do if capNow<=g.cap then rank=g;break end end
+  if not rank then return "Upgrades: no further rank listed ("..current.."/"..capNow..")." end
+  targetCap=rank.nextCap
+  local need=math.max(0,rank.required-current)
+  lines[1]="Next: "..rank.rank.." ("..rank.nextCap.." cap) - "..(need>0 and ("needs skill "..rank.required.." ("..need.." to go)") or "skill requirement met").." - "..rank.method
+ end
+ local matches=orderedTrainers(name,targetCap)
+ if #matches>0 then
+  local e=matches[1].entry
+  local coords=(type(e.x)=="number" and type(e.y)=="number") and string.format(" (%.1f, %.1f)",e.x,e.y) or ""
+  local tag=matches[1].distance and " [same zone]" or ""
+  local classic=(e.confidence~="Forever documented") and " - Classic ref, unconfirmed" or ""
+  lines[#lines+1]="Trainer: "..(e.npc or "?").." - "..(e.zone or "?")..coords..tag..classic..(#matches>1 and ("  (+"..(#matches-1).." more)") or "")
+ elseif rank then
+  lines[#lines+1]=rank.detail
+ else
+  lines[#lines+1]="No trainer locations bundled for this profession yet."
+ end
+ return table.concat(lines,"\n")
+end
 local function createBrowser()
  browser=CreateFrame("Frame","PBFRecipeBrowser",UIParent,"BackdropTemplate")
  browser:SetSize(860,570)
@@ -925,11 +1016,12 @@ local function createBrowser()
   f:SetPoint("TOPLEFT",browser,"TOPLEFT",x,y);f:SetWidth(w);f:SetJustifyH("LEFT");f:SetText(text);return f
  end
  local heading=browser:CreateFontString(nil,"OVERLAY","GameFontNormalLarge")
- heading:SetPoint("TOP",browser,"TOP",0,-20);heading:SetText("Profession Recipe Collection")
+ heading:SetPoint("TOP",browser,"TOP",0,-20);heading:SetText("Recipe Finder")
  makeButton(browser,"X",811,-13,25,function() browser:Hide() end)
- local hint=label("Recipes are collected automatically when a profession book opens. Collection is shared; learned status is per character.",28,-53,790)
+ local hint=label("Browse every recipe and see which this character knows. Open a profession window once to detect known recipes. Catalog entries are unverified client data.",28,-48,585)
  hint:SetTextColor(0.78,0.75,0.69)
- browser.status=label("",28,-84,790,"GameFontNormal")
+ browser.status=label("",28,-88,790,"GameFontNormal")
+ if type(PBFCreateCatalogButton)=="function" then PBFCreateCatalogButton(browser) end
  -- Standard WoW dropdown: known professions first, then unlearned professions.
  local professionDropdown=CreateFrame("Frame","PBFProfessionDropdown",browser,"UIDropDownMenuTemplate")
  professionDropdown:SetPoint("TOPLEFT",browser,"TOPLEFT",8,-103)
@@ -941,6 +1033,7 @@ local function createBrowser()
   PBFDB.selectedCollection=name
   browser.page=1;browser.scrollOffset=0;browser.selectedID=nil;browser.refresh()
  end
+ browser.selectProfession=selectProfession
  UIDropDownMenu_Initialize(professionDropdown,function(self,level)
   local known,unknown={},{}
   for name in pairs(professions) do
@@ -955,6 +1048,8 @@ local function createBrowser()
    local info=UIDropDownMenu_CreateInfo()
    local cat=PBFAccountDB and PBFAccountDB.recipeCatalogs and PBFAccountDB.recipeCatalogs[name]
    local n=cat and cat.recipes and #cat.recipes or 0
+   local clientRows=clientCatalogRows(name)
+   if clientRows and #clientRows>n then n=#clientRows end
    info.text=name..(gatheringProfessions[name] and (n>0 and (" (gathering + "..n.." crafts)") or " (gathering)") or (n>0 and (" ("..n.." recipes)") or " (catalog pending)"))
    info.checked=(liveRecipes.profession==name)
    info.func=function() selectProfession(name);CloseDropDownMenus() end
@@ -1063,7 +1158,14 @@ local function createBrowser()
   end
   btn.cells=cells;rowButtons[i]=btn
  end
- local footer=label("",29,-519,780,"GameFontHighlightSmall")
+ -- Profession upgrade summary: next rank, skill needed, method and trainer.
+ local upgrade=label("",29,-498,650,"GameFontNormalSmall")
+ upgrade:SetTextColor(0.95,0.85,0.55)
+ makeButton(browser,"Trainer List",690,-497,140,function()
+  local n=liveRecipes.profession
+  if n and professions[n] then showTrainerDirectory(n) end
+ end)
+ local footer=label("",29,-540,780,"GameFontHighlightSmall")
  browser.scrollOffset=0
  local scroll=CreateFrame("Slider","PBFCollectionScrollbar",browser,nil)
  scroll:SetPoint("TOPLEFT",browser,"TOPLEFT",452,-230)
@@ -1120,11 +1222,13 @@ local function createBrowser()
    if professionUnlearned then return "|cff999999Unlearned Profession|r" end
    if r.learned==true then return "|cff66ff99Known|r" end
    if r.learned==false then return "|cffffaa55Missing|r" end
-   return "|cffaaaaaaNot Verified|r"
+   if r.unseen then return "|cff999999Unverified|r" end
+   return "|cffaaaaaaNot Scanned|r"
   end
   local statusVerified=false
   for _,r in ipairs(recipes) do if r.learned~=nil then statusVerified=true;break end end
-  browser.status:SetText(name.."  |  "..(professionUnlearned and ("Unlearned Profession  |  "..#recipes.." recipes") or (statusVerified and (knownCount.." / "..#recipes.." Known") or (#recipes.." recipes; status not verified")))..(liveRecipes.fromSnapshot and "  (saved)" or ""))
+  browser.status:SetText(name.."  |  "..(professionUnlearned and ("Unlearned Profession  |  "..#recipes.." recipes") or (statusVerified and (knownCount.." / "..#recipes.." Known") or (#recipes.." recipes; open this profession's window to detect known recipes")))..(liveRecipes.fromSnapshot and "  (saved)" or ""))
+  if upgrade and professions[name] then upgrade:SetText(upgradeSummary(name)) elseif upgrade then upgrade:SetText("") end
   if gathering then browser.status:SetText(name.."  |  Gathering  |  "..(skills[name] and "Known Profession" or "Unlearned Profession").."  |  "..#recipes.." verified crafts") end
   UIDropDownMenu_SetText(professionDropdown,name)
   filter:SetText("Status: "..({all="All",known="Known",missing="Missing",learnable="Skill Met"})[browser.filter])
@@ -1216,17 +1320,46 @@ local function createBrowser()
   for _,r in ipairs(recipes) do if r.id==browser.selectedID then selected=r;break end end
   if not selected then selected=matches[1] end
   if selected then
-   local source=selected.source or "Unknown"
-   details:SetText("|cffffd46a"..selected.name.."|r\n\n"..recipeStatus(selected).."\n\nRequired skill: "..(selected.requiredSkill or "Not available").."\n\nSource: "..source.."\n\nTrainer / Vendor / Mob:\n"..(selected.sourceDetails or "Not verified").."\n\nLocation:\n"..(selected.sourceLocation or "Not verified").."\n\nSpell ID: "..selected.id)
+   local source=selected.source or "Not documented yet"
+   local text="|cffffd46a"..selected.name.."|r\n\n"..recipeStatus(selected)
+   if selected.unseen then text=text.."\n|cff999999Not reported by this character's profession window; it may not be learnable.|r" end
+   text=text.."\n\nRequired skill: "..(selected.requiredSkill or "Not available")
+   local c=selected.client
+   if c and type(c.low)=="number" and type(c.high)=="number" and c.low>0 then
+    text=text.."\nSkill-up range: "..c.low.."-"..c.high.." |cff999999(client data, unverified)|r"
+   end
+   text=text.."\n\nSource: "..source.."\nTrainer / Vendor / Mob: "..(selected.sourceDetails or "Not verified").."\nLocation: "..(selected.sourceLocation or "Not verified")
+   text=text.."\n\nSpell ID: "..selected.id
+   if c and type(c.outputs)=="table" and #c.outputs>0 then text=text.."\nOutput item ID: "..table.concat(c.outputs,", ") end
+   text=text.."\n|cff999999Look up: /profbar wowhead "..selected.id.."|r"
+   details:SetText(text)
   elseif gathering then
    local skill=skills[name]
    local progress=skill and ((skill.value or 0).." / "..(skill.max or skill.maxValue or "?")) or "Not learned / not detected"
    details:SetText("|cffffd46a"..name.." - Gathering|r\n\nCurrent skill: "..progress.."\n\n"..gatheringNotes[name].."\n\nNo verified crafting or camp-object abilities have been collected for this profession.\n\nGatherable resources, minimum skill and zone information will appear here when a verified Forever resource dataset is available. No unverified locations are displayed.")
   else details:SetText("No recipes match your filters.") end
-  footer:SetText(gathering and ("Gathering overview  |  "..( #recipes>0 and "Verified utility crafts shown" or "Resource database pending verification")) or ("Scroll to browse  |  Click headers to sort; Shift-click adds sort  |  Skill ? = unknown"))
+  footer:SetText(gathering and ("Gathering overview  |  "..( #recipes>0 and "Verified utility crafts shown" or "Resource database pending verification")) or ("Scroll to browse  |  Click headers to sort; Shift-click adds sort  |  Skill ? = unknown  |  Sources shown only where documented"))
  end
  search:SetScript("OnTextChanged",function() browser.page=1;browser.scrollOffset=0;browser.refresh() end)
  browser:Hide()
+end
+-- Recipe Finder entry points: bar right-click, minimap right-click, /profbar recipes.
+showRecipeFinder=function(name)
+ if not browser then chat("Recipe Finder is not ready yet.");return end
+ if name and professions[name] and browser.selectProfession then browser.selectProfession(name) else browser.refresh() end
+ browser:Show()
+end
+toggleRecipeFinder=function()
+ if not browser then chat("Recipe Finder is not ready yet.");return end
+ if browser:IsShown() then browser:Hide();return end
+ local name=PBFDB and PBFDB.selectedCollection
+ if not (name and professions[name]) then
+  local known={}
+  for n in pairs(skills) do if professions[n] then known[#known+1]=n end end
+  table.sort(known)
+  name=known[1] or "Cooking"
+ end
+ showRecipeFinder(name)
 end
 -- Settings UI and minimap launcher, using legacy-client UI primitives.
 local function toggleSettings()
@@ -1380,9 +1513,11 @@ local function createSettings()
  makeButton(settings,"+",295,-448,42,function() PBFDB.groupLabelScale=math.min(2,math.floor((PBFDB.groupLabelScale+0.1)*10+0.5)/10);redraw();settings:refresh() end)
  makeButton(settings,"Reset Positions",120,-543,180,function(self, arg1) PBFDB.positions={};setPosition(panel,"panel",0,80);redraw();chat("Bar positions reset") end)
  makeButton(settings,"Choose Visible Bars",22,-493,376,function() barPicker:Show();barPicker:refresh() end)
+ makeButton(settings,"Recipe Finder",22,-573,180,function() toggleRecipeFinder() end)
+ makeButton(settings,"Client Catalog",218,-573,180,function() if type(PBFToggleCandidateCatalog)=="function" then PBFToggleCandidateCatalog() end end)
  local note=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- note:SetPoint("TOP",settings,"TOP",0,-591);note:SetWidth(375)
- note:SetText("Beta: Recipe browsing is unavailable; it will return in a later release.")
+ note:SetPoint("TOP",settings,"TOP",0,-607);note:SetWidth(375)
+ note:SetText("Recipe Finder: also right-click a profession bar or the minimap icon. Catalog data is unverified.")
  settings.refresh=function(self, arg1) settings.modeLabel:SetText("Display: "..PBFDB.mode)
   settings.widthLabel:SetText("Bar width: "..PBFDB.width)
   settings.barScaleLabel:SetText("Bar height scale: "..PBFDB.barScale)
@@ -1416,7 +1551,8 @@ local function createMinimapButton()
  border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
  minimapButton:RegisterForClicks("LeftButtonUp","RightButtonUp")
  minimapButton:RegisterForDrag("LeftButton")
- minimapButton:SetScript("OnClick",function(self, arg1) toggleSettings()
+ minimapButton:SetScript("OnClick",function(self, button)
+  if button=="RightButton" and toggleRecipeFinder then toggleRecipeFinder() else toggleSettings() end
  end)
  minimapButton:SetScript("OnDragStart",function(self, arg1) self.dragging=true end)
  minimapButton:SetScript("OnDragStop",function(self, arg1) self.dragging=false end)
@@ -1429,6 +1565,7 @@ local function createMinimapButton()
  minimapButton:SetScript("OnEnter",function(self, arg1) GameTooltip:SetOwner(self,"ANCHOR_LEFT")
   GameTooltip:AddLine("ProfessionBars Forever")
   GameTooltip:AddLine("Left-click: Settings",1,1,1)
+  GameTooltip:AddLine("Right-click: Recipe Finder",1,1,1)
   GameTooltip:AddLine("Drag: Move around minimap",1,1,1)
   GameTooltip:Show()
  end)
@@ -1619,7 +1756,8 @@ local function command(msg)
   local total=0
   for name,data in pairs(snapshots) do chat(name..": "..tostring(data.count or #(data.recipes or {})).." saved recipes");total=total+1 end
   if total==0 then chat("No saved recipes yet. Open a crafting profession to collect them automatically.") end
- elseif msg=="recipes" then chat("Recipe Browser is unavailable in this beta.")
+ elseif msg=="recipes" or msg=="finder" then toggleRecipeFinder()
+ elseif msg=="catalog" then if type(PBFToggleCandidateCatalog)=="function" then PBFToggleCandidateCatalog() else chat("Client catalog is not loaded.") end
  elseif msg=="minimap" then PBFDB.minimapHidden=not PBFDB.minimapHidden;placeMinimapButton();chat("Minimap icon "..(PBFDB.minimapHidden and "hidden" or "shown"))
  elseif msg=="mode compact" or msg=="mode individual" then PBFDB.mode=string.sub(msg,6);redraw();chat("Mode: "..PBFDB.mode)
  elseif msg=="weapons on" or msg=="weapons off" then PBFDB.weapons=(msg=="weapons on");scanSkills(true)
@@ -1661,6 +1799,8 @@ end
 SLASH_PBF1="/profbar"
 SLASH_PBF2="/pbf"
 SlashCmdList["PBF"]=command
+SLASH_PBFCATALOG1="/pbfcatalog"
+SlashCmdList["PBFCATALOG"]=function() command("catalog") end
 local initialized=false
 local function initialize()
  if initialized then return end
