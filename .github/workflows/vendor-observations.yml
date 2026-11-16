@@ -5,11 +5,17 @@ on:
       - 'ProfessionBarsForever/VendorObservations.lua'
       - 'ProfessionBarsForever/ProfessionBarsForever.toc'
       - 'tests/vendor_observations.lua'
+      - 'tests/character_store.lua'
+      - 'ProfessionBarsForever/CharacterStore.lua'
+      - 'ProfessionBarsForever/ProfessionBarsForever.lua'
       - '.github/workflows/vendor-observations.yml'
   pull_request:
     paths:
       - 'ProfessionBarsForever/VendorObservations.lua'
       - 'tests/vendor_observations.lua'
+      - 'tests/character_store.lua'
+      - 'ProfessionBarsForever/CharacterStore.lua'
+      - 'ProfessionBarsForever/ProfessionBarsForever.lua'
       - '.github/workflows/vendor-observations.yml'
 permissions:
   contents: read
@@ -24,6 +30,9 @@ jobs:
         run: |
           luac5.1 -p ProfessionBarsForever/VendorObservations.lua
           lua5.1 tests/vendor_observations.lua
+          luac5.1 -p ProfessionBarsForever/CharacterStore.lua
+          luac5.1 -p ProfessionBarsForever/ProfessionBarsForever.lua
+          lua5.1 tests/character_store.lua
       - name: Validate exported JSON independently
         run: |
           python3 - <<'PY'

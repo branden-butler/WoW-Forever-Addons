@@ -33,3 +33,9 @@ Beta checklist: https://github.com/branden-butler/WoW-Forever-Addons/blob/main/P
 Vendor inventories are recorded locally when you open a shop; no scan button is needed. Use `/pbfdata` for status, `/pbfdata off` or `on` to control collection, and `/pbfdata export [page]` to review and copy a game-data-only JSON export.
 
 No data is uploaded. Observations include item/NPC IDs, contextual prices, stock, game build and optional nearby observer coordinates. They do not automatically change recipe verification or learned status. See [collection and export details](../docs/VENDOR_OBSERVATIONS.md), including storage limits and the future desktop-client contract.
+
+## Saved characters
+
+Recipe Finder now has a character dropdown. Log into each alt and open its crafting profession windows once to populate its own saved Known/Missing status. Profession levels, including gathering skills, are saved per character. Hover a recipe to see which saved characters know it.
+
+Snapshots persist across closing the addon, reloads and logins, and remain local. See [character persistence and testing](../docs/CHARACTER_SNAPSHOTS.md).

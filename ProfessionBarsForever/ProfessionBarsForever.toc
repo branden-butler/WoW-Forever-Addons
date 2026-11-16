@@ -4,6 +4,7 @@
 ## Version: 1.0.0-beta.1
 ## SavedVariables: PBFAccountDB, PBFObservationDB
 ## SavedVariablesPerCharacter: PBFDB
+CharacterStore.lua
 VendorObservations.lua
 RecipeSources.lua
 SeedCooking.lua
