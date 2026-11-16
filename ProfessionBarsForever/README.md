@@ -27,3 +27,9 @@ Open it by **right-clicking a profession bar** or the **minimap icon**, with `/p
 
 Report issues: https://github.com/branden-butler/WoW-Forever-Addons/issues/new/choose
 Beta checklist: https://github.com/branden-butler/WoW-Forever-Addons/blob/main/ProfessionBarsForever/BETA_TESTING.md
+
+## Automatic vendor observations
+
+Vendor inventories are recorded locally when you open a shop; no scan button is needed. Use `/pbfdata` for status, `/pbfdata off` or `on` to control collection, and `/pbfdata export [page]` to review and copy a game-data-only JSON export.
+
+No data is uploaded. Observations include item/NPC IDs, contextual prices, stock, game build and optional nearby observer coordinates. They do not automatically change recipe verification or learned status. See [collection and export details](../docs/VENDOR_OBSERVATIONS.md), including storage limits and the future desktop-client contract.
