@@ -1,0 +1,63 @@
+name: Package ProfessionBars
+on:
+  push:
+    branches: [recipe-finder]
+    paths:
+      - 'ProfessionBarsForever/**'
+      - 'tests/**'
+      - '.github/workflows/package-addon.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1
+        run: sudo apt-get update -qq && sudo apt-get install -y lua5.1
+      - name: Verify addon and regression tests
+        run: |
+          find ProfessionBarsForever -name '*.lua' -exec luac5.1 -p {} \;
+          lua5.1 tests/vendor_observations.lua
+          lua5.1 tests/character_store.lua
+      - name: Stage addon-only package and verify TOC
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          import zipfile
+          import io
+          import json
+          source = Path("ProfessionBarsForever")
+          target = Path("package") / source.name
+          shutil.copytree(source, target)
+          toc = target / "ProfessionBarsForever.toc"
+          assert toc.is_file()
+          for line in toc.read_text().splitlines():
+              line = line.strip()
+              if line and not line.startswith("#"):
+                  path = target / line.replace("\\\\", "/").replace("\\", "/")
+                  assert path.is_file(), f"Missing TOC dependency: {line}"
+          files = sorted(p for p in target.rglob("*") if p.is_file())
+          assert files
+          # Verify the exact folder layout that the artifact ZIP must contain.
+          buffer = io.BytesIO()
+          with zipfile.ZipFile(buffer, "w") as archive:
+              for path in files:
+                  archive.write(path, path.relative_to("package"))
+          with zipfile.ZipFile(buffer) as archive:
+              assert archive.testzip() is None
+              assert "ProfessionBarsForever/ProfessionBarsForever.toc" in archive.namelist()
+              assert all(p.startswith("ProfessionBarsForever/") for p in archive.namelist())
+          with open("/tmp/pbf-observations-test.json") as f:
+              assert json.load(f)["schemaVersion"] == 1
+          print(f"Verified addon-only package: {len(files)} files")
+          PY
+      - name: Upload install-ready ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProfessionBarsForever-recipe-finder
+          path: package/
+          if-no-files-found: error
+          retention-days: 90
