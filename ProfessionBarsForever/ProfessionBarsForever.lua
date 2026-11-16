@@ -1,4 +1,4 @@
--- ProfessionBars Forever 1.1.38 trainer directory and expanded recipe metadata test - Forever 1.60.1 profession API compatibility.
+-- ProfessionBars Forever 1.0.0-beta.1 - profession and skill progress bars for WoW Forever (client 1.60.1 profession API compatible).
 local ADDON = "ProfessionBarsForever"
 local skills, bars, lastValues = {}, {}, {}
 local activeCraftProfession=nil
@@ -1429,7 +1429,6 @@ local function createMinimapButton()
  minimapButton:SetScript("OnEnter",function(self, arg1) GameTooltip:SetOwner(self,"ANCHOR_LEFT")
   GameTooltip:AddLine("ProfessionBars Forever")
   GameTooltip:AddLine("Left-click: Settings",1,1,1)
-  GameTooltip:AddLine("Right-click: Recipes",1,1,1)
   GameTooltip:AddLine("Drag: Move around minimap",1,1,1)
   GameTooltip:Show()
  end)
@@ -1650,7 +1649,7 @@ local function command(msg)
   local n=string.match(msg,"^craft%s+(.+)$")
   if professions[n] then activeCraftProfession=n;scanRecipes();chat("Recipe scan labeled: "..n) else chat("Unknown profession: "..tostring(n)) end
  elseif msg=="debug" then
-  chat("Version 1.0.0-beta.2; scan source: "..scanSource.."; bars: "..tostring(#sortedKeys(skills)).."; locked: "..tostring(PBFDB.locked).."; mode: "..PBFDB.mode)
+  chat("Version 1.0.0-beta.1; scan source: "..scanSource.."; bars: "..tostring(#sortedKeys(skills)).."; locked: "..tostring(PBFDB.locked).."; mode: "..PBFDB.mode)
   chat("Recipe scan: "..recipeScanSource.."; modern recipe API="..tostring(C_TradeSkillUI and type(C_TradeSkillUI.GetAllRecipeIDs)))
   chat("GetProfessions="..tostring(type(GetProfessions)).." GetProfessionInfo="..tostring(type(GetProfessionInfo)).." C_TradeSkillUI="..tostring(type(C_TradeSkillUI)))
   chat("Weapon API: C_SkillInfo="..tostring(type(C_SkillInfo)).." GetNumSkillLines="..tostring(type(GetNumSkillLines)))

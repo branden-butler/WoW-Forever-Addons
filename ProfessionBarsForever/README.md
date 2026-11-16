@@ -1,6 +1,6 @@
 # ProfessionBars Forever
 
-**Version:** 1.0.0-beta.3  
+**Version:** 1.0.0-beta.1  
 **Client:** WoW Forever (beta)
 
 Configurable progress bars for primary and secondary professions, Defense, and weapon skills. Includes compact grouped and individual display modes, adjustable category headings, bar dimensions, opacity, and minimap settings.
