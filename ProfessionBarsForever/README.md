@@ -36,6 +36,6 @@ No data is uploaded. Observations include item/NPC IDs, contextual prices, stock
 
 ## Saved characters
 
-Recipe Finder now has a character dropdown. Log into each alt and open its crafting profession windows once to populate its own saved Known/Missing status. Profession levels, including gathering skills, are saved per character. Hover a recipe to see which saved characters know it.
+Recipe Finder now has a character dropdown. Log into each alt to populate its profile. Known recipes are checked automatically using available spell APIs, while saved Known/Missing status persists without reopening professions. Opening a crafting profession can supply additional details not exposed by background APIs. Profession levels, including gathering skills, are saved per character. Hover a recipe to see which saved characters know it.
 
 Snapshots persist across closing the addon, reloads and logins, and remain local. See [character persistence and testing](../docs/CHARACTER_SNAPSHOTS.md).

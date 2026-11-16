@@ -22,8 +22,8 @@ store:RecordSkills({Tailoring={value=100,max=150,kind="profession"},Enchanting={
 store:MergeRecipes("Tailoring",{{id=10,learned=true}})
 assert(b.knownByID.Alchemy==nil and b.skills.Alchemy==nil)
 assert(a.knownByID.Tailoring==nil)
-assert(store:KnownOn("Alchemy",1)[1]=="Alpha - Realm One")
-assert(store:KnownOn("Tailoring",10)[1]=="Beta - Realm Two")
+assert(store:KnownOn("Alchemy",1)[1]=="Alpha")
+assert(store:KnownOn("Tailoring",10)[1]=="Beta")
 assert(#store:List()==2)
 -- Simulate loading a saved account table with a new per-character session.
 local function copy(v)
@@ -104,3 +104,41 @@ local flags={}
 for _,r in ipairs(api.get().list) do flags[r.id]=r.learned end
 assert(flags[1]==true and flags[6]==false)
 print("Character persistence and real scan integration tests passed")
+
+-- Background positive detection works with all profession frames closed.
+viewedKey=nil;open=false
+local catalog={professions={Alchemy={{1},{7},{8}},Tailoring={{11}}}}
+local function checkKnownSpells()
+ local old=store:Get().knownByID.Alchemy[1]
+ local changed,status=store:ScanKnownSpells(catalog)
+ assert(status=="spell_queries")
+ assert(store:Get().knownByID.Alchemy[7]==true)
+ assert(store:Get().knownByID.Alchemy[8]==nil,"false/unsupported became Missing")
+ assert(store:Get().knownByID.Alchemy[1]==old,"background check erased prior flags")
+ assert(store:Get("Player-B").knownByID.Alchemy==nil,"alt contamination")
+ return changed
+end
+IsPlayerSpell=function(id) return id==7 end
+assert(checkKnownSpells()==1)
+assert(checkKnownSpells()==0)
+IsPlayerSpell=nil
+-- Modern adapter; no overrides API is used.
+store:Get().knownByID.Alchemy[7]=nil
+C_SpellBook={IsSpellKnown=function(id) return id==7 end}
+assert(checkKnownSpells()==1)
+C_SpellBook=nil
+store:Get().knownByID.Alchemy[7]=nil
+IsSpellKnown=function(id,pet) assert(pet==false);return id==7 end
+assert(checkKnownSpells()==1)
+-- Failing queries cannot destroy evidence or abort scanning.
+IsSpellKnown=function() error("not available on this build") end
+local count=store:ScanKnownSpells(catalog);assert(count==0)
+IsSpellKnown=nil
+local _,status=store:ScanKnownSpells(catalog);assert(status=="unavailable")
+-- Query recipes captured by API but absent from the bundled client catalog too.
+account.recipeCatalogs.NewProfession={recipes={{id=456,name="New"}}}
+IsPlayerSpell=function(id) return id==456 end
+store:ScanKnownSpells(catalog)
+assert(store:Get().knownByID.NewProfession[456])
+IsPlayerSpell=nil
+print("Background known-spell tests passed")

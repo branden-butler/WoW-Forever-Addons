@@ -86,8 +86,55 @@ function Store:KnownOn(profession,id)
  for _,row in ipairs(self:List()) do
   local flags=row.profile.knownByID and row.profile.knownByID[profession]
   if flags and flags[id]==true then
-   names[#names+1]=row.profile.name.." - "..row.profile.realm
+   names[#names+1]=row.profile.name
   end
  end
  return names
+end
+
+-- Discover positive learned evidence without opening any profession window.
+-- A false spell query is NOT proof a client candidate is obtainable/missing.
+function Store:ScanKnownSpells(catalog)
+ local p=self:Get();if not p then return 0,"no_character" end
+ local queries={}
+ if C_SpellBook and type(C_SpellBook.IsSpellKnown)=="function" then
+  queries[#queries+1]=function(id) return C_SpellBook.IsSpellKnown(id) end
+ end
+ if type(IsPlayerSpell)=="function" then queries[#queries+1]=IsPlayerSpell end
+ if type(IsSpellKnown)=="function" then
+  queries[#queries+1]=function(id) return IsSpellKnown(id,false) end
+ end
+ if #queries==0 then return 0,"unavailable" end
+ local byProfession={}
+ for profession,rows in pairs(catalog and catalog.professions or {}) do
+  byProfession[profession]={}
+  for _,row in ipairs(rows) do
+   if type(row[1])=="number" then byProfession[profession][row[1]]=true end
+  end
+ end
+ for profession,data in pairs(self.account.recipeCatalogs or {}) do
+  byProfession[profession]=byProfession[profession] or {}
+  for _,row in ipairs(data.recipes or {}) do
+   if type(row.id)=="number" then byProfession[profession][row.id]=true end
+  end
+ end
+ local changed=0
+ for profession,ids in pairs(byProfession) do
+  for id in pairs(ids) do
+   local known=false
+   for _,query in ipairs(queries) do
+    local ok,result=pcall(query,id)
+    if ok and result==true then known=true;break end
+   end
+   if known then
+    p.knownByID[profession]=p.knownByID[profession] or {}
+    if p.knownByID[profession][id]~=true then
+     p.knownByID[profession][id]=true;changed=changed+1
+     p.lastScan[profession]=timestamp()
+    end
+   end
+  end
+ end
+ p.lastBackgroundCheck=timestamp()
+ return changed,"spell_queries"
 end

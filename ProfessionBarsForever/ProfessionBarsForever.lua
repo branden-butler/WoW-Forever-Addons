@@ -965,6 +965,19 @@ local function scanRecipes()
  recipeScanSource="C_TradeSkillUI ("..found.." learned, "..missing.." unlearned; "..profession..")"
  if browser and browser:IsShown() then browser.refresh() end
 end
+local knownScanPending=false
+local function queueKnownSpellScan()
+ if knownScanPending then return end
+ knownScanPending=true
+ local function run()
+  knownScanPending=false
+  if not PBFCharacterStore or not PBFCharacterStore:Get() then return end
+  PBFCharacterStore:ScanKnownSpells(PBFClientCatalog70862)
+  if liveRecipes.profession then loadSavedRecipeSnapshot(liveRecipes.profession) end
+  if browser and browser:IsShown() then browser.refresh() end
+ end
+ if C_Timer and C_Timer.After then C_Timer.After(0.5,run) else run() end
+end
 local function makeButton(parent,label,x,y,w,callback)
  local b=CreateFrame("Button",nil,parent,"UIPanelButtonTemplate")
  b:SetWidth(w); b:SetHeight(23); b:SetPoint("TOPLEFT",parent,"TOPLEFT",x,y)
@@ -1033,13 +1046,15 @@ local function createBrowser()
  local heading=browser:CreateFontString(nil,"OVERLAY","GameFontNormalLarge")
  heading:SetPoint("TOP",browser,"TOP",0,-20);heading:SetText("Recipe Finder")
  makeButton(browser,"X",811,-13,25,function() browser:Hide() end)
- local hint=label("Saved per character. Open each character's profession window to update. Hover a recipe to see which characters know it.",28,-48,540)
+ local hint=label("Saved per character. Known recipes update automatically where supported. Hover a recipe to see which characters know it.",28,-48,540)
  hint:SetTextColor(0.78,0.75,0.69)
  browser.status=label("",28,-88,790,"GameFontNormal")
  if type(PBFCreateCatalogButton)=="function" then PBFCreateCatalogButton(browser) end
  if browser.PBFCatalogButton then
   browser.PBFCatalogButton:ClearAllPoints()
-  browser.PBFCatalogButton:SetPoint("TOPRIGHT",browser,"TOPRIGHT",-42,-20)
+  browser.PBFCatalogButton:SetSize(155,23)
+  browser.PBFCatalogButton:SetText("Client Catalog")
+  browser.PBFCatalogButton:SetPoint("TOPRIGHT",browser,"TOPRIGHT",-76,-20)
  end
  local characterDropdown=CreateFrame("Frame","PBFCharacterDropdown",browser,"UIDropDownMenuTemplate")
  characterDropdown:SetPoint("TOPLEFT",browser,"TOPLEFT",580,-51)
@@ -1048,7 +1063,7 @@ local function createBrowser()
   for _,row in ipairs(PBFCharacterStore:List()) do
    local key,p=row.key,row.profile
    local info=UIDropDownMenu_CreateInfo()
-   info.text=p.name.." - "..p.realm..(key==PBFCharacterStore.currentKey and " (you)" or "")
+   info.text=p.name..(key==PBFCharacterStore.currentKey and " (you)" or "")
    info.checked=(key==(viewedCharacterKey or PBFCharacterStore.currentKey))
    info.func=function()
     viewedCharacterKey=key
@@ -1263,7 +1278,7 @@ local function createBrowser()
  browser.refresh=function()
   local profile=viewedProfile()
   local profileSkills=viewedSkills()
-  UIDropDownMenu_SetText(characterDropdown,profile and (profile.name.." - "..profile.realm) or "Current character")
+  UIDropDownMenu_SetText(characterDropdown,profile and profile.name or "Current character")
   local recipes=liveRecipes.list or {}
   local name=liveRecipes.profession or "No profession saved"
   local gathering=gatheringProfessions[name]
@@ -1403,6 +1418,7 @@ local function createBrowser()
 end
 -- Recipe Finder entry points: bar right-click, minimap right-click, /profbar recipes.
 showRecipeFinder=function(name)
+ queueKnownSpellScan()
  if not browser then chat("Recipe Finder is not ready yet.");return end
  if name and professions[name] and browser.selectProfession then browser.selectProfession(name) else browser.refresh() end
  browser:Show()
@@ -1866,7 +1882,7 @@ local function initialize()
  initialized=true
  defaults()
  PBFCharacterStore:Initialize(PBFAccountDB,PBFDB,{guid=UnitGUID("player"),name=UnitName("player"),realm=GetRealmName(),faction=UnitFactionGroup("player")})
- seedVerifiedCatalogs();loadFirstSavedProfession();createPanel();createBrowser();createBarPicker();createSettings();createMinimapButton();scanSkills(true)
+ seedVerifiedCatalogs();loadFirstSavedProfession();createPanel();createBrowser();createBarPicker();createSettings();createMinimapButton();scanSkills(true);queueKnownSpellScan()
  chat("Loaded. Left-click minimap icon for settings; /profbar opens settings.")
 end
 -- Forever uses a modern client; legacy profession events may not exist.
@@ -1881,6 +1897,8 @@ safeRegister("PLAYER_LOGIN")
 safeRegister("SKILL_LINES_CHANGED")
 safeRegister("SKILL_LINES_UPDATED")
 safeRegister("SPELLS_CHANGED")
+safeRegister("LEARNED_SPELL_IN_TAB")
+safeRegister("NEW_RECIPE_LEARNED")
 safeRegister("PLAYER_ENTERING_WORLD")
 safeRegister("TRADE_SKILL_SHOW")
 safeRegister("TRADE_SKILL_UPDATE")
@@ -1891,8 +1909,8 @@ safeRegister("TRADE_SKILL_LIST_UPDATE")
 events:SetScript("OnEvent",function(self,ev)
  local e=ev
  if e=="VARIABLES_LOADED" or e=="PLAYER_LOGIN" then initialize()
- elseif e=="SKILL_LINES_CHANGED" or e=="SKILL_LINES_UPDATED" or e=="SPELLS_CHANGED" or e=="PLAYER_ENTERING_WORLD" then
-  if initialized then scanSkills(false);if browser and browser:IsShown() then browser.refresh() end end
+ elseif e=="SKILL_LINES_CHANGED" or e=="SKILL_LINES_UPDATED" or e=="SPELLS_CHANGED" or e=="PLAYER_ENTERING_WORLD" or e=="LEARNED_SPELL_IN_TAB" or e=="NEW_RECIPE_LEARNED" then
+  if initialized then scanSkills(false);queueKnownSpellScan();if browser and browser:IsShown() then browser.refresh() end end
  elseif e=="TRADE_SKILL_SHOW" or e=="TRADE_SKILL_UPDATE" or e=="TRADE_SKILL_LIST_UPDATE" or e=="TRADE_SKILL_DATA_SOURCE_CHANGED" or e=="CRAFT_SHOW" or e=="CRAFT_UPDATE" then
   if initialized then scanSkills(false);scanRecipes() end
  end
