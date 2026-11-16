@@ -1,0 +1,49 @@
+name: Vendor observation tests
+on:
+  push:
+    paths:
+      - 'ProfessionBarsForever/VendorObservations.lua'
+      - 'ProfessionBarsForever/ProfessionBarsForever.toc'
+      - 'tests/vendor_observations.lua'
+      - 'tests/character_store.lua'
+      - 'ProfessionBarsForever/CatalogData.lua'
+      - 'ProfessionBarsForever/CharacterStore.lua'
+      - 'ProfessionBarsForever/ProfessionBarsForever.lua'
+      - '.github/workflows/vendor-observations.yml'
+  pull_request:
+    paths:
+      - 'ProfessionBarsForever/VendorObservations.lua'
+      - 'tests/vendor_observations.lua'
+      - 'tests/character_store.lua'
+      - 'ProfessionBarsForever/CatalogData.lua'
+      - 'ProfessionBarsForever/CharacterStore.lua'
+      - 'ProfessionBarsForever/ProfessionBarsForever.lua'
+      - '.github/workflows/vendor-observations.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1
+        run: sudo apt-get update -qq && sudo apt-get install -y lua5.1
+      - name: Check syntax and event behavior
+        run: |
+          luac5.1 -p ProfessionBarsForever/VendorObservations.lua
+          lua5.1 tests/vendor_observations.lua
+          luac5.1 -p ProfessionBarsForever/CharacterStore.lua
+          luac5.1 -p ProfessionBarsForever/ProfessionBarsForever.lua
+          lua5.1 tests/character_store.lua
+      - name: Validate exported JSON independently
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("/tmp/pbf-observations-test.json") as f:
+              data = json.load(f)
+          assert data["schemaVersion"] == 1
+          assert len(data["observations"]) == 3
+          assert data["format"] == "professionbars-observations"
+          assert all(r["evidence"] == "observed" for r in data["observations"])
+          print("JSON export parsed successfully")
+          PY
