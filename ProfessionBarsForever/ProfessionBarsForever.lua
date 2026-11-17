@@ -1580,7 +1580,7 @@ local function addNumericInput(parent, y, key, minimum, maximum, percent, intege
 end
 local function createSettings()
  settings=CreateFrame("Frame","PBFSettingsFrame",UIParent,"BackdropTemplate")
- settings:SetWidth(420);settings:SetHeight(692)
+ settings:SetWidth(420);settings:SetHeight(660)
  settings:SetPoint("CENTER",UIParent,"CENTER",0,0)
  settings:SetFrameStrata("DIALOG")
  settings:SetBackdrop({bgFile="Interface\\DialogFrame\\UI-DialogBox-Background",edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border",tile=true,tileSize=32,edgeSize=32,insets={left=11,right=12,top=12,bottom=11}})
@@ -1598,44 +1598,44 @@ local function createSettings()
  mode:SetPoint("TOP",settings,"TOP",0,-109)
  settings.modeLabel=mode
  addCheck(settings,"Show optional weapon skills",-131,function(self, arg1) return PBFDB.weapons end,function(v) PBFDB.weapons=v end)
- addCheck(settings,"Flash and +1 on skill gains",-161,function(self, arg1) return PBFDB.glow end,function(v) PBFDB.glow=v; if not v then for _,bar in pairs(bars) do bar.gainTime=0;bar.flash:Hide();bar.gainShine:SetAlpha(0);bar.gainBorder:SetAlpha(0);bar.gainFillStart=nil;bar.gainFillTarget=nil;bar:SetBackdropBorderColor(0.55,0.47,0.32,0.95) end;redraw() end end)
- addCheck(settings,"Lock bar positions",-191,function(self, arg1) return PBFDB.locked end,function(v) PBFDB.locked=v end)
- local width=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- width:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-229);settings.widthLabel=width
- makeButton(settings,"-",245,-221,42,function(self, arg1) PBFDB.width=math.max(180,PBFDB.width-20);redraw();settings:refresh() end)
- makeButton(settings,"+",295,-221,42,function(self, arg1) PBFDB.width=math.min(400,PBFDB.width+20);redraw();settings:refresh() end)
- local barScale=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- barScale:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-263);settings.barScaleLabel=barScale
- makeButton(settings,"-",245,-255,42,function() PBFDB.barScale=math.max(0.5,math.floor((PBFDB.barScale-0.1)*10+0.5)/10);redraw();settings:refresh() end)
- makeButton(settings,"+",295,-255,42,function() PBFDB.barScale=math.min(2.5,math.floor((PBFDB.barScale+0.1)*10+0.5)/10);redraw();settings:refresh() end)
- local barOpacity=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- barOpacity:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-297);settings.barOpacityLabel=barOpacity
- makeButton(settings,"-",245,-289,42,function() PBFDB.barOpacity=math.max(0.2,math.floor(PBFDB.barOpacity*20+0.5)/20-0.05);redraw();settings:refresh() end)
- makeButton(settings,"+",295,-289,42,function() PBFDB.barOpacity=math.min(1,math.floor(PBFDB.barOpacity*20+0.5)/20+0.05);redraw();settings:refresh() end)
- local panelOpacity=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- panelOpacity:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-331);settings.panelOpacityLabel=panelOpacity
- makeButton(settings,"-",245,-323,42,function() PBFDB.panelOpacity=math.max(0,math.floor(PBFDB.panelOpacity*20+0.5)/20-0.05);redraw();settings:refresh() end)
- makeButton(settings,"+",295,-323,42,function() PBFDB.panelOpacity=math.min(1,math.floor(PBFDB.panelOpacity*20+0.5)/20+0.05);redraw();settings:refresh() end)
- addNumericInput(settings,-221,"width",180,400,false,true)
- addNumericInput(settings,-255,"barScale",0.5,2.5,false,false)
- addNumericInput(settings,-289,"barOpacity",0.2,1,true,true)
- addNumericInput(settings,-323,"panelOpacity",0,1,true,true)
- addCheck(settings,"Show panel title",-364,function() return PBFDB.showTitle end,function(v) PBFDB.showTitle=v;titleVisible=nil;refreshHover();redraw() end)
- addCheck(settings,"Title only on hover",-393,function() return PBFDB.titleOnHover end,function(v) PBFDB.titleOnHover=v;titleVisible=nil;refreshHover();redraw() end)
- addCheck(settings,"Show category labels (compact panel)",-422,function() return PBFDB.showGroupLabels end,function(v) PBFDB.showGroupLabels=v;redraw() end)
- local groupLabelSize=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- groupLabelSize:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-456);settings.groupLabelSizeLabel=groupLabelSize
- makeButton(settings,"-",245,-448,42,function() PBFDB.groupLabelScale=math.max(0.7,math.floor((PBFDB.groupLabelScale-0.1)*10+0.5)/10);redraw();settings:refresh() end)
- makeButton(settings,"+",295,-448,42,function() PBFDB.groupLabelScale=math.min(2,math.floor((PBFDB.groupLabelScale+0.1)*10+0.5)/10);redraw();settings:refresh() end)
- addCheck(settings,"Show minimap button",-523,function() return not PBFDB.minimapHidden end,function(v)
+ addCheck(settings,"Flash and +1 on skill gains",-157,function(self, arg1) return PBFDB.glow end,function(v) PBFDB.glow=v; if not v then for _,bar in pairs(bars) do bar.gainTime=0;bar.flash:Hide();bar.gainShine:SetAlpha(0);bar.gainBorder:SetAlpha(0);bar.gainFillStart=nil;bar.gainFillTarget=nil;bar:SetBackdropBorderColor(0.55,0.47,0.32,0.95) end;redraw() end end)
+ addCheck(settings,"Lock bar positions",-183,function(self, arg1) return PBFDB.locked end,function(v) PBFDB.locked=v end)
+ addCheck(settings,"Show panel title",-209,function() return PBFDB.showTitle end,function(v) PBFDB.showTitle=v;titleVisible=nil;refreshHover();redraw() end)
+ addCheck(settings,"Title only on hover",-235,function() return PBFDB.titleOnHover end,function(v) PBFDB.titleOnHover=v;titleVisible=nil;refreshHover();redraw() end)
+ addCheck(settings,"Show category labels (compact panel)",-261,function() return PBFDB.showGroupLabels end,function(v) PBFDB.showGroupLabels=v;redraw() end)
+ addCheck(settings,"Show minimap button",-287,function() return not PBFDB.minimapHidden end,function(v)
   PBFDB.minimapHidden=not v;PBFDB.showMinimap=v;placeMinimapButton()
  end)
- makeButton(settings,"Reset Positions",120,-574,180,function(self, arg1) PBFDB.positions={};setPosition(panel,"panel",0,80);redraw();chat("Bar positions reset") end)
- makeButton(settings,"Choose Visible Bars",22,-493,376,function() barPicker:Show();barPicker:refresh() end)
- makeButton(settings,"Recipe Finder",22,-604,180,function() toggleRecipeFinder() end)
- makeButton(settings,"Client Catalog",218,-604,180,function() if type(PBFToggleCandidateCatalog)=="function" then PBFToggleCandidateCatalog() end end)
+ local width=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+ width:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-341);settings.widthLabel=width
+ makeButton(settings,"-",245,-333,42,function(self, arg1) PBFDB.width=math.max(180,PBFDB.width-20);redraw();settings:refresh() end)
+ makeButton(settings,"+",295,-333,42,function(self, arg1) PBFDB.width=math.min(400,PBFDB.width+20);redraw();settings:refresh() end)
+ local barScale=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+ barScale:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-375);settings.barScaleLabel=barScale
+ makeButton(settings,"-",245,-367,42,function() PBFDB.barScale=math.max(0.5,math.floor((PBFDB.barScale-0.1)*10+0.5)/10);redraw();settings:refresh() end)
+ makeButton(settings,"+",295,-367,42,function() PBFDB.barScale=math.min(2.5,math.floor((PBFDB.barScale+0.1)*10+0.5)/10);redraw();settings:refresh() end)
+ local barOpacity=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+ barOpacity:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-409);settings.barOpacityLabel=barOpacity
+ makeButton(settings,"-",245,-401,42,function() PBFDB.barOpacity=math.max(0.2,math.floor(PBFDB.barOpacity*20+0.5)/20-0.05);redraw();settings:refresh() end)
+ makeButton(settings,"+",295,-401,42,function() PBFDB.barOpacity=math.min(1,math.floor(PBFDB.barOpacity*20+0.5)/20+0.05);redraw();settings:refresh() end)
+ local panelOpacity=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+ panelOpacity:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-443);settings.panelOpacityLabel=panelOpacity
+ makeButton(settings,"-",245,-435,42,function() PBFDB.panelOpacity=math.max(0,math.floor(PBFDB.panelOpacity*20+0.5)/20-0.05);redraw();settings:refresh() end)
+ makeButton(settings,"+",295,-435,42,function() PBFDB.panelOpacity=math.min(1,math.floor(PBFDB.panelOpacity*20+0.5)/20+0.05);redraw();settings:refresh() end)
+ addNumericInput(settings,-333,"width",180,400,false,true)
+ addNumericInput(settings,-367,"barScale",0.5,2.5,false,false)
+ addNumericInput(settings,-401,"barOpacity",0.2,1,true,true)
+ addNumericInput(settings,-435,"panelOpacity",0,1,true,true)
+ local groupLabelSize=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+ groupLabelSize:SetPoint("TOPLEFT",settings,"TOPLEFT",25,-477);settings.groupLabelSizeLabel=groupLabelSize
+ makeButton(settings,"-",245,-469,42,function() PBFDB.groupLabelScale=math.max(0.7,math.floor((PBFDB.groupLabelScale-0.1)*10+0.5)/10);redraw();settings:refresh() end)
+ makeButton(settings,"+",295,-469,42,function() PBFDB.groupLabelScale=math.min(2,math.floor((PBFDB.groupLabelScale+0.1)*10+0.5)/10);redraw();settings:refresh() end)
+ makeButton(settings,"Reset Positions",120,-545,180,function(self, arg1) PBFDB.positions={};setPosition(panel,"panel",0,80);redraw();chat("Bar positions reset") end)
+ makeButton(settings,"Choose Visible Bars",22,-511,376,function() barPicker:Show();barPicker:refresh() end)
+ makeButton(settings,"Recipe Finder",22,-575,180,function() toggleRecipeFinder() end)
+ makeButton(settings,"Client Catalog",218,-575,180,function() if type(PBFToggleCandidateCatalog)=="function" then PBFToggleCandidateCatalog() end end)
  local note=settings:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
- note:SetPoint("TOP",settings,"TOP",0,-638);note:SetWidth(375)
+ note:SetPoint("TOP",settings,"TOP",0,-610);note:SetWidth(375)
  note:SetText("Recipe Finder: also right-click a profession bar or the minimap icon. Catalog data is unverified.")
  settings.refresh=function(self, arg1) settings.modeLabel:SetText("Display: "..PBFDB.mode)
   settings.widthLabel:SetText("Bar width: "..PBFDB.width)
@@ -1653,8 +1653,9 @@ placeMinimapButton=function()
  if not minimapButton or not Minimap then return end
  local width,height=Minimap:GetWidth(),Minimap:GetHeight()
  if not width or not height or width<=0 or height<=0 then return end
- -- Local dimensions follow size changes; parent scaling is inherited once.
- local factor=math.min(width,height)/140
+ -- Standard minimap-button artwork size; inherit parent scaling once.
+ -- Enlarging only the map dimensions must not enlarge our icon relative to its neighbors.
+ local factor=1
  local angle=(PBFDB.minimapAngle or 225)*math.pi/180
  local x,y=math.cos(angle),math.sin(angle)
  if type(GetMinimapShape)=="function" and GetMinimapShape()=="SQUARE" then
@@ -1700,7 +1701,7 @@ local function createMinimapButton()
   local mx,my=Minimap:GetCenter()
   local width,height=Minimap:GetWidth(),Minimap:GetHeight()
   if not scale or scale<=0 or not mx or not my or width<=0 or height<=0 then return end
-  local factor=math.min(width,height)/140
+  local factor=1
   local dx=(x/scale-mx)/(width/2+8*factor)
   local dy=(y/scale-my)/(height/2+8*factor)
   if dx==0 and dy==0 then return end

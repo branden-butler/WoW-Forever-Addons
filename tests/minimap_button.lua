@@ -53,10 +53,10 @@ assert(button.parent==map and button.scale==1 and button.ignoreParent==false)
 map.effectiveScale=2;api.place()
 near(button.width,31)
 near(button.width*map:GetEffectiveScale()*button.scale,62)
--- Resizing the frame resizes every visual element and the orbit.
+-- Resizing only the map changes the orbit, not icon size relative to other buttons.
 map.width=280;map.height=280;map.scripts.OnSizeChanged()
-near(button.width,62);near(button.icon.width,38);near(button.border.width,106)
-near(button.point[4],156)
+near(button.width,31);near(button.icon.width,19);near(button.border.width,53)
+near(button.point[4],148)
 -- Rectangular maps use separate horizontal/vertical radii.
 map.width=280;map.height=140;env.PBFDB.minimapAngle=90;api.place()
 near(button.width,31);near(button.point[4],0);near(button.point[5],78)
