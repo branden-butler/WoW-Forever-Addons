@@ -1182,7 +1182,9 @@ local function createBrowser()
   b:SetPoint("TOPLEFT",browser,"TOPLEFT",col.x,-170)
   b:SetSize(col.w,23)
   local t=b:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
-  t:SetPoint("LEFT",b,"LEFT",3,0);t:SetJustifyH("LEFT");t:SetWidth(col.w-5)
+  if col.key=="skill" or col.key=="learnLevel" or col.key=="useLevel" then
+   t:SetPoint("CENTER",b,"CENTER",0,0);t:SetJustifyH("CENTER");t:SetWidth(col.w)
+  else t:SetPoint("LEFT",b,"LEFT",3,0);t:SetJustifyH("LEFT");t:SetWidth(col.w-5) end
   b.label=t;b.title=col.title;b.sortKey=col.key
   b:SetScript("OnClick",function() sortClick(col.key) end)
   b:SetScript("OnEnter",function(self)
@@ -1248,6 +1250,9 @@ local function createBrowser()
  for i=1,14 do
   local btn=CreateFrame("Button",nil,browser)
   btn:SetSize(414,21);btn:SetPoint("TOPLEFT",browser,"TOPLEFT",28,-196-(i-1)*21)
+  local selection=btn:CreateTexture(nil,"BACKGROUND",nil,-1)
+  selection:SetAllPoints();selection:SetTexture("Interface\\Buttons\\WHITE8X8");selection:SetVertexColor(0.75,0.52,0.12,0.32);selection:Hide()
+  btn.selection=selection
   local highlight=btn:CreateTexture(nil,"BACKGROUND")
   highlight:SetAllPoints();highlight:SetTexture("Interface\\Buttons\\WHITE8X8");highlight:SetVertexColor(0.55,0.40,0.17,0.25);highlight:Hide()
   btn:SetScript("OnEnter",function(self)
@@ -1265,7 +1270,7 @@ local function createBrowser()
   local cells={}
   for j,c in ipairs({{0,206},{210,68},{282,36},{319,49},{371,48}}) do
    local f=btn:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
-   f:SetPoint("LEFT",btn,"LEFT",c[1],0);f:SetWidth(c[2]);f:SetJustifyH("LEFT");cells[j]=f
+   f:SetPoint("LEFT",btn,"LEFT",c[1],0);f:SetWidth(c[2]);f:SetJustifyH(j>=3 and "CENTER" or "LEFT");cells[j]=f
   end
   btn.cells=cells;rowButtons[i]=btn
  end
@@ -1429,8 +1434,12 @@ local function createBrowser()
   upArrow:SetEnabled(maxOffset>0)
   downArrow:SetEnabled(maxOffset>0)
   scroll:SetShown(maxOffset>0)
+  local selected
+  for _,r in ipairs(recipes) do if r.id==browser.selectedID then selected=r;break end end
+  if not selected then selected=matches[1] end
   for i,btn in ipairs(rowButtons) do
    local r=displayRows[browser.scrollOffset+i]
+   btn.selection:SetShown(r~=nil and not r.header and selected~=nil and r.id==selected.id)
    if r and r.header then
     btn.recipeID=nil;btn:Show()
     btn.cells[1]:SetText("|cffffd100"..(browser.collapsed[r.key] and "[+] " or "[-] ")..r.name.." ("..r.count..")|r")
@@ -1450,9 +1459,6 @@ local function createBrowser()
     end)
    else btn.recipeID=nil;btn:Hide() end
   end
-  local selected
-  for _,r in ipairs(recipes) do if r.id==browser.selectedID then selected=r;break end end
-  if not selected then selected=matches[1] end
   if selected then
    local source=selected.source or "Not documented yet"
    local text="|cffffd46a"..selected.name.."|r\n\n"..recipeStatus(selected)
