@@ -34,3 +34,8 @@ In game: compare a recipe's Learn Lvl with its training/learning requirement, th
 ## Finder category hydration
 
 Opening a profession in Recipe Finder now attempts to load missing category/reagent presentation data directly for that profession's catalog spells. It does not open the native profession UI or use these queries to overwrite character learned status. If Forever has not loaded the requested data, Uncategorized remains until the client makes category information available; a native profession scan still supplements the same cache. Previously captured data within the same build/locale is retained on nil responses.
+
+
+## Use-level column
+
+Recipe Finder shows sortable Use Lvl beside Learn Lvl with tighter column spacing. Use Lvl reads output item minimum character level, independently of learn level. None means an explicit zero requirement; ? means unavailable or no identified output. Multiple outputs with different reported requirements show Varies (sorted with unknown values); details retain each output requirement. Item data completion refreshes the column automatically.

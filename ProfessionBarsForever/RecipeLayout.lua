@@ -239,3 +239,18 @@ function Layout:RefreshProfession(profession,recipes)
   end
  end
 end
+
+-- Only summarize a recipe when every output has a reported, matching requirement.
+function Layout:GetUseLevelSummary(profession,id,outputIDs)
+ if type(outputIDs)~="table" or #outputIDs==0 then return nil,"?" end
+ local common,missing,varies
+ for _,itemID in ipairs(outputIDs) do
+  local level=self:GetUseLevel(profession,id,itemID)
+  if level==nil then missing=true
+  elseif common==nil then common=level
+  elseif common~=level then varies=true end
+ end
+ if missing then return nil,"?" end
+ if varies then return nil,"Varies" end
+ return common,common==0 and "None" or tostring(common)
+end

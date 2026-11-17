@@ -189,3 +189,23 @@ C_TradeSkillUI.GetRecipeInfo=function() return nil end
 layout:RefreshProfession("Cooking",{{id=100,name="Recipe"}})
 assert(layout:Get("Cooking",100).categoryName=="Food","unavailable data erased groups")
 print("Finder-open category hydration tests passed")
+
+-- Column summaries must not confuse item level with use level or hide output differences.
+GetBuildInfo=function() return "1.60.1","use-column-tests","date",16001 end
+local useLevels={[601]=5,[602]=5,[603]=20,[604]=0}
+C_Item.GetItemInfo=function(id)
+ if useLevels[id]~=nil then return "Output "..id,"item:"..id,1,99,useLevels[id] end
+end
+local level,label=layout:GetUseLevelSummary("Alchemy",1,{601})
+assert(level==5 and label=="5")
+level,label=layout:GetUseLevelSummary("Alchemy",1,{601,602})
+assert(level==5 and label=="5")
+level,label=layout:GetUseLevelSummary("Alchemy",1,{601,603})
+assert(level==nil and label=="Varies")
+level,label=layout:GetUseLevelSummary("Alchemy",1,{604})
+assert(level==0 and label=="None")
+level,label=layout:GetUseLevelSummary("Alchemy",1,{601,605})
+assert(level==nil and label=="?")
+level,label=layout:GetUseLevelSummary("Alchemy",1,{})
+assert(level==nil and label=="?")
+print("Use-level column summary tests passed")

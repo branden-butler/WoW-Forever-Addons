@@ -1150,10 +1150,11 @@ local function createBrowser()
  -- Click headers to sort; Shift-click adds or changes a secondary key.
  -- Third click removes that key and returns to the default sort.
  local sortColumns={
-  {key="name",title="Recipe",x=28,w=230},
-  {key="status",title="Status",x=263,w=78},
-  {key="skill",title="Skill",x=345,w=43},
-  {key="learnLevel",title="Learn Lvl",x=392,w=55},
+  {key="name",title="Recipe",x=28,w=206},
+  {key="status",title="Status",x=238,w=68},
+  {key="skill",title="Skill",x=310,w=36},
+  {key="learnLevel",title="Learn Lvl",x=350,w=49},
+  {key="useLevel",title="Use Lvl",x=402,w=45},
  }
  local sortButtons={}
  local function getSortSpec()
@@ -1190,6 +1191,11 @@ local function createBrowser()
     GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
     GameTooltip:AddLine("Level required to learn")
     GameTooltip:AddLine("Minimum character level reported by the spell API. ? means not reported.",1,1,1,true)
+    GameTooltip:Show()
+   elseif self.sortKey=="useLevel" then
+    GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
+    GameTooltip:AddLine("Level required to use")
+    GameTooltip:AddLine("Minimum character level to use the crafted item. None means no level requirement; ? means not reported. Varies means outputs have different requirements; see details.",1,1,1,true)
     GameTooltip:Show()
    end
   end)
@@ -1257,7 +1263,7 @@ local function createBrowser()
   end)
   btn:SetScript("OnLeave",function() highlight:Hide();GameTooltip:Hide() end)
   local cells={}
-  for j,c in ipairs({{0,230},{235,78},{317,43},{364,55}}) do
+  for j,c in ipairs({{0,206},{210,68},{282,36},{322,49},{374,45}}) do
    local f=btn:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
    f:SetPoint("LEFT",btn,"LEFT",c[1],0);f:SetWidth(c[2]);f:SetJustifyH("LEFT");cells[j]=f
   end
@@ -1324,6 +1330,7 @@ local function createBrowser()
   local knownCount=0
   for _,r in ipairs(recipes) do
    r.learnLevel=PBFRecipeLayout:GetLearnLevel(name,r.id)
+   r.useLevel,r.useLevelLabel=PBFRecipeLayout:GetUseLevelSummary(name,r.id,r.client and r.client.outputs)
    if r.learned then knownCount=knownCount+1 end
   end
   -- A profession is unlearned only when the current character's profession
@@ -1366,6 +1373,7 @@ local function createBrowser()
     return type(r.requiredSkill)=="number" and r.requiredSkill or nil
    end
    if key=="learnLevel" then return r.learnLevel end
+   if key=="useLevel" then return r.useLevel end
    local value
    if key=="name" then value=r.name
    elseif key=="source" then value=r.source
@@ -1426,7 +1434,7 @@ local function createBrowser()
    if r and r.header then
     btn.recipeID=nil;btn:Show()
     btn.cells[1]:SetText("|cffffd100"..(browser.collapsed[r.key] and "[+] " or "[-] ")..r.name.." ("..r.count..")|r")
-    btn.cells[2]:SetText("");btn.cells[3]:SetText("");btn.cells[4]:SetText("")
+    btn.cells[2]:SetText("");btn.cells[3]:SetText("");btn.cells[4]:SetText("");btn.cells[5]:SetText("")
     btn:SetScript("OnClick",function()
      browser.collapsed[r.key]=not browser.collapsed[r.key];browser.refresh()
     end)
@@ -1435,6 +1443,7 @@ local function createBrowser()
     btn.cells[2]:SetText(recipeStatus(r))
     btn.cells[3]:SetText(r.requiredSkill and tostring(r.requiredSkill) or "?")
     btn.cells[4]:SetText(r.learnLevel and tostring(r.learnLevel) or "?")
+    btn.cells[5]:SetText(r.useLevelLabel or "?")
     btn:SetScript("OnClick",function()
      browser.selectedID=r.id;PBFRecipeLayout:Refresh(name,r.id);detailsScroll:SetVerticalScroll(0)
      browser.refresh()
@@ -1470,7 +1479,7 @@ local function createBrowser()
    local progress=skill and ((skill.value or 0).." / "..(skill.max or skill.maxValue or "?")) or "Not learned / not detected"
    setDetailsText("|cffffd46a"..name.." - Gathering|r\n\nCurrent skill: "..progress.."\n\n"..gatheringNotes[name].."\n\nNo verified crafting or camp-object abilities have been collected for this profession.\n\nGatherable resources, minimum skill and zone information will appear here when a verified Forever resource dataset is available. No unverified locations are displayed.")
   else setDetailsText("No recipes match your filters.") end
-  footer:SetText(gathering and ("Gathering overview  |  "..( #recipes>0 and "Verified utility crafts shown" or "Resource database pending verification")) or ("Scroll to browse  |  Click headers to sort; Shift-click adds sort  |  Skill / Learn Lvl ? = not reported  |  Sources shown only where documented"))
+  footer:SetText(gathering and ("Gathering overview  |  "..( #recipes>0 and "Verified utility crafts shown" or "Resource database pending verification")) or ("Scroll to browse  |  Click headers to sort; Shift-click adds sort  |  Skill / Levels ? = not reported  |  Sources shown only where documented"))
  end
  search:SetScript("OnTextChanged",function() browser.page=1;browser.scrollOffset=0;browser.refresh() end)
  browser:Hide()
