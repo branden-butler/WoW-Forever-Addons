@@ -118,6 +118,27 @@ function Layout:BuildRows(profession,recipes,grouped,collapsed)
  end
  return rows
 end
+-- Item names arrive asynchronously; track only requested reagent IDs.
+local pendingItems,cachedNames={},{}
+function Layout:ItemName(id)
+ if cachedNames[id] then return cachedNames[id] end
+ local name=call(C_Item and C_Item.GetItemNameByID,id)
+ if type(name)=="string" and name~="" then cachedNames[id]=name;pendingItems[id]=nil;return name end
+ local firstRequest=pendingItems[id]==nil
+ if firstRequest then pendingItems[id]="waiting" end
+ -- GetItemInfo is also a cache-loading fallback on clients without RequestLoadItemDataByID.
+ name=call((C_Item and C_Item.GetItemInfo) or GetItemInfo,id)
+ if type(name)=="string" and name~="" then cachedNames[id]=name;pendingItems[id]=nil;return name end
+ if firstRequest then call(C_Item and C_Item.RequestLoadItemDataByID,id) end
+end
+function Layout:ItemDataReceived(id,success)
+ if not pendingItems[id] then return false end
+ if success==false then pendingItems[id]="failed";return false end
+ if pendingItems[id]=="ready" then return false end
+ pendingItems[id]="ready"
+ return true
+end
+
 function Layout:ReagentText(profession,id)
  local data=self:Get(profession,id)
  if not data or not data.reagents then return "\n\nReagents: Not reported by the client yet." end
@@ -126,8 +147,7 @@ function Layout:ReagentText(profession,id)
   local choices={}
   for _,choice in ipairs(slot.choices) do
    if choice.itemID then
-    local get=(C_Item and C_Item.GetItemNameByID) or GetItemInfo
-    local name=call(get,choice.itemID)
+    local name=self:ItemName(choice.itemID)
     choices[#choices+1]=name or ("Item "..choice.itemID)
    else choices[#choices+1]="Currency "..choice.currencyID end
   end

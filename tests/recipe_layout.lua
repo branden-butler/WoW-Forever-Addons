@@ -69,3 +69,61 @@ layout:Capture(200,{},{Enchanting=true})
 rows=layout:BuildRows("Enchanting",{{id=200,name="No metadata"}},true,{})
 assert(rows[1].name=="Uncategorized" and rows[2].id==200)
 print("Recipe grouping, client order, reagent persistence and fallback tests passed")
+
+-- First click can render an ID; cache completion must refresh the same selection automatically.
+GetBuildInfo=function() return "1.60.1","70938","date",16001 end
+dofile("ProfessionBarsForever/RecipeLayout.lua")
+layout=PBFRecipeLayout
+local requests,loaded=0,false
+GetItemInfo=nil
+C_Item={
+ GetItemNameByID=function(id) if loaded and id==10940 then return "Strange Dust" end end,
+ RequestLoadItemDataByID=function() requests=requests+1 end
+}
+local first=layout:ReagentText("Enchanting",100)
+assert(first:find("Item 10940",1,true))
+local requestCount=requests
+layout:ReagentText("Enchanting",100)
+assert(requests==requestCount,"repeated rendering re-requested unresolved items")
+assert(not layout:ItemDataReceived(123456789,true),"unrelated item caused refresh")
+assert(not layout:ItemDataReceived(10940,false),"failed load caused refresh")
+-- Wire the real main-addon event handler with only the UI surface mocked.
+local sourceFile=assert(io.open("ProfessionBarsForever/ProfessionBarsForever.lua"))
+local source=sourceFile:read("*a");sourceFile:close()
+local start=assert(source:find("local itemDetailsRefreshPending=false",1,true))
+local stop=assert(source:find("-- Low-frequency refresh",start,true))
+local callback,timers
+timers={}
+local renders=0
+local selected=100
+local shown=true
+local env=setmetatable({
+ initialized=true,PBFRecipeLayout=layout,
+ C_Timer={After=function(_,fn) timers[#timers+1]=fn end},
+ events={SetScript=function(_,_,fn) callback=fn end},
+ browser={IsShown=function() return shown end,refresh=function()
+  renders=renders+1
+  assert(selected==100,"cache callback changed recipe selection")
+  local text=layout:ReagentText("Enchanting",100)
+  assert(text:find("Strange Dust",1,true))
+ end}
+},{__index=_G})
+local chunk=assert(loadstring(source:sub(start,stop-1)));setfenv(chunk,env);chunk()
+loaded=true
+callback(nil,"GET_ITEM_INFO_RECEIVED",10940,true)
+callback(nil,"ITEM_DATA_LOAD_RESULT",1000,true)
+assert(#timers==1,"item completion events were not coalesced")
+timers[1]()
+assert(renders==1)
+assert(layout:ReagentText("Enchanting",100):find("Strange Dust",1,true))
+callback(nil,"GET_ITEM_INFO_RECEIVED",123456789,true)
+assert(renders==1 and #timers==1)
+-- A closed window must not be reopened by an item callback.
+shown=false
+callback(nil,"GET_ITEM_INFO_RECEIVED",1001,true)
+assert(#timers==1)
+-- Legacy cache lookup still works when modern APIs are absent.
+C_Item=nil
+GetItemInfo=function(id) return "Legacy Name "..id end
+assert(layout:ItemName(2000)=="Legacy Name 2000")
+print("Async item-name resolution, automatic details refresh and legacy fallback tests passed")

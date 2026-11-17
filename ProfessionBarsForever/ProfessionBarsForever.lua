@@ -1935,6 +1935,8 @@ local function safeRegister(name)
  local ok=pcall(function(self, arg1) events:RegisterEvent(name) end)
  return ok
 end
+safeRegister("GET_ITEM_INFO_RECEIVED")
+safeRegister("ITEM_DATA_LOAD_RESULT")
 safeRegister("VARIABLES_LOADED")
 safeRegister("PLAYER_LOGIN")
 safeRegister("SKILL_LINES_CHANGED")
@@ -1949,9 +1951,21 @@ safeRegister("CRAFT_SHOW")
 safeRegister("CRAFT_UPDATE")
 safeRegister("TRADE_SKILL_DATA_SOURCE_CHANGED")
 safeRegister("TRADE_SKILL_LIST_UPDATE")
-events:SetScript("OnEvent",function(self,ev)
+local itemDetailsRefreshPending=false
+local function refreshLoadedReagents()
+ if itemDetailsRefreshPending or not browser or not browser:IsShown() then return end
+ itemDetailsRefreshPending=true
+ local function refresh()
+  itemDetailsRefreshPending=false
+  if browser and browser:IsShown() then browser.refresh() end
+ end
+ if C_Timer and C_Timer.After then C_Timer.After(0.05,refresh) else refresh() end
+end
+events:SetScript("OnEvent",function(self,ev,itemID,success)
  local e=ev
- if e=="VARIABLES_LOADED" or e=="PLAYER_LOGIN" then initialize()
+ if e=="GET_ITEM_INFO_RECEIVED" or e=="ITEM_DATA_LOAD_RESULT" then
+  if initialized and PBFRecipeLayout and PBFRecipeLayout:ItemDataReceived(itemID,success) then refreshLoadedReagents() end
+ elseif e=="VARIABLES_LOADED" or e=="PLAYER_LOGIN" then initialize()
  elseif e=="SKILL_LINES_CHANGED" or e=="SKILL_LINES_UPDATED" or e=="SPELLS_CHANGED" or e=="PLAYER_ENTERING_WORLD" or e=="LEARNED_SPELL_IN_TAB" or e=="NEW_RECIPE_LEARNED" then
   if initialized then scanSkills(false);queueKnownSpellScan();if browser and browser:IsShown() then browser.refresh() end end
  elseif e=="TRADE_SKILL_SHOW" or e=="TRADE_SKILL_UPDATE" or e=="TRADE_SKILL_LIST_UPDATE" or e=="TRADE_SKILL_DATA_SOURCE_CHANGED" or e=="CRAFT_SHOW" or e=="CRAFT_UPDATE" then
