@@ -1153,8 +1153,8 @@ local function createBrowser()
   {key="name",title="Recipe",x=28,w=206},
   {key="status",title="Status",x=238,w=68},
   {key="skill",title="Skill",x=310,w=36},
-  {key="learnLevel",title="Learn Lvl",x=350,w=49},
-  {key="useLevel",title="Use Lvl",x=402,w=45},
+  {key="learnLevel",title="Learn Lvl",x=347,w=57},
+  {key="useLevel",title="Use Lvl",x=407,w=40},
  }
  local sortButtons={}
  local function getSortSpec()
@@ -1263,7 +1263,7 @@ local function createBrowser()
   end)
   btn:SetScript("OnLeave",function() highlight:Hide();GameTooltip:Hide() end)
   local cells={}
-  for j,c in ipairs({{0,206},{210,68},{282,36},{322,49},{374,45}}) do
+  for j,c in ipairs({{0,206},{210,68},{282,36},{319,57},{379,40}}) do
    local f=btn:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
    f:SetPoint("LEFT",btn,"LEFT",c[1],0);f:SetWidth(c[2]);f:SetJustifyH("LEFT");cells[j]=f
   end

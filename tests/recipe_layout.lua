@@ -209,3 +209,25 @@ assert(level==nil and label=="?")
 level,label=layout:GetUseLevelSummary("Alchemy",1,{})
 assert(level==nil and label=="?")
 print("Use-level column summary tests passed")
+
+-- Client category IDs are opaque identifiers, not necessarily positive.
+GetBuildInfo=function() return "1.60.1","signed-categories","date",16001 end
+C_TradeSkillUI={
+ GetCategories=function() return -10,0,10 end,
+ GetCategoryInfo=function(id) return {name=({[-10]="Camping",[0]="Bandages",[10]="Curatives"})[id]} end
+}
+layout:CaptureOrder()
+layout:Capture(100,{categoryID=-10},{["First Aid"]=true},1)
+layout:Capture(101,{categoryID=0},{["First Aid"]=true},2)
+layout:Capture(102,{categoryID=10},{["First Aid"]=true},3)
+local rows=layout:BuildRows("First Aid",{{id=102,name="Anti-Venom"},{id=101,name="Bandage"},{id=100,name="Kit"}},true,{})
+assert(rows[1].name=="Camping" and rows[3].name=="Bandages" and rows[5].name=="Curatives")
+assert(layout:Get("First Aid",100).categoryID==-10)
+assert(layout:Get("First Aid",101).categoryID==0)
+C_TradeSkillUI.GetCategories=function() return {10,0,-10} end
+layout:CaptureOrder()
+assert(layout.categoryRanks[10]==1 and layout.categoryRanks[-10]==3)
+C_TradeSkillUI.GetCategories=function() error("unavailable") end
+layout:CaptureOrder()
+assert(next(layout.categoryRanks)==nil)
+print("Opaque category IDs and category list adapter tests passed")

@@ -39,3 +39,6 @@ Opening a profession in Recipe Finder now attempts to load missing category/reag
 ## Use-level column
 
 Recipe Finder shows sortable Use Lvl beside Learn Lvl with tighter column spacing. Use Lvl reads output item minimum character level, independently of learn level. None means an explicit zero requirement; ? means unavailable or no identified output. Multiple outputs with different reported requirements show Varies (sorted with unknown values); details retain each output requirement. Item data completion refreshes the column automatically.
+
+
+Category compatibility: category IDs are treated as opaque finite integers, including zero and negative IDs. Category ordering accepts both a table and multiple GetCategories return values, as used by Forever UI. Missing API results retain captured presentation data. In-game verification is still required for the reported First Aid/Cooking issue.

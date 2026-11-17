@@ -7,6 +7,9 @@ local function call(fn,...)
  if ok then return value end
 end
 local function positive(v) return type(v)=="number" and v>0 and v<math.huge and v==math.floor(v) end
+local function categoryID(v)
+ return type(v)=="number" and v==v and v>-math.huge and v<math.huge and v==math.floor(v)
+end
 local function context()
  local _,build=GetBuildInfo()
  return tostring(build)..":"..GetLocale()
@@ -26,7 +29,7 @@ function Layout:Capture(id,info,owners,recipeOrder)
  if type(info)~="table" or type(owners)~="table" then return end
  local api=C_TradeSkillUI or {}
  local update={}
- if positive(info.categoryID) then
+ if categoryID(info.categoryID) then
   update.categoryID=info.categoryID
   local category=call(api.GetCategoryInfo,info.categoryID)
   if type(category)=="table" and type(category.name)=="string" and category.name~="" then
@@ -70,10 +73,15 @@ function Layout:CaptureOrder()
  local api=C_TradeSkillUI or {}
  local order={}
  self.categoryRanks={}
- local categories=call(api.GetCategories)
- if type(categories)=="table" then
-  for i,id in ipairs(categories) do if positive(id) then self.categoryRanks[id]=i end end
+ local categories={}
+ if type(api.GetCategories)=="function" then
+  local values={pcall(api.GetCategories)}
+  if values[1] then
+   if type(values[2])=="table" then categories=values[2]
+   else for i=2,#values do categories[#categories+1]=values[i] end end
+  end
  end
+ for i,id in ipairs(categories) do if categoryID(id) then self.categoryRanks[id]=i end end
  local ids=call(api.GetFilteredRecipeIDs)
  if type(ids)=="table" then
   for i,id in ipairs(ids) do if positive(id) then order[id]=i end end
