@@ -6,6 +6,7 @@ on:
       - 'ProfessionBarsForever/ProfessionBarsForever.toc'
       - 'tests/vendor_observations.lua'
       - 'tests/character_store.lua'
+      - 'tests/minimap_button.lua'
       - 'tests/recipe_layout.lua'
       - 'ProfessionBarsForever/RecipeLayout.lua'
       - 'ProfessionBarsForever/CatalogData.lua'
@@ -17,6 +18,7 @@ on:
       - 'ProfessionBarsForever/VendorObservations.lua'
       - 'tests/vendor_observations.lua'
       - 'tests/character_store.lua'
+      - 'tests/minimap_button.lua'
       - 'tests/recipe_layout.lua'
       - 'ProfessionBarsForever/RecipeLayout.lua'
       - 'ProfessionBarsForever/CatalogData.lua'
@@ -39,6 +41,7 @@ jobs:
           luac5.1 -p ProfessionBarsForever/CharacterStore.lua
           luac5.1 -p ProfessionBarsForever/ProfessionBarsForever.lua
           lua5.1 tests/character_store.lua
+          lua5.1 tests/minimap_button.lua
           luac5.1 -p ProfessionBarsForever/RecipeLayout.lua
           lua5.1 tests/recipe_layout.lua
       - name: Validate exported JSON independently
