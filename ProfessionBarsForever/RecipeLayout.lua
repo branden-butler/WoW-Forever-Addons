@@ -164,3 +164,60 @@ function Layout:Refresh(profession,id)
   self:Capture(id,info,{[profession]=true})
  end
 end
+
+-- Character learning level and output usage level are independent requirements.
+local function nonnegative(v)
+ return type(v)=="number" and v>=0 and v<math.huge and v==math.floor(v)
+end
+local function writeRequirement(profession,id,key,value)
+ local d=database();if not d then return end
+ d[profession]=d[profession] or {}
+ d[profession][id]=d[profession][id] or {}
+ d[profession][id][key]=value
+end
+function Layout:GetLearnLevel(profession,id)
+ local get=(C_Spell and C_Spell.GetSpellLevelLearned) or GetSpellLevelLearned
+ local level=call(get,id)
+ if positive(level) then
+  writeRequirement(profession,id,"learnLevel",level)
+  writeRequirement(profession,id,"learnLevelSource","spell_level_learned")
+  return level
+ end
+ -- Zero/absent spell-level values are not enough evidence to assert "no requirement".
+ local record=self:Get(profession,id)
+ return record and record.learnLevel or nil
+end
+function Layout:GetUseLevel(profession,id,itemID)
+ local get=(C_Item and C_Item.GetItemInfo) or GetItemInfo
+ if type(get)=="function" then
+  local ok,name,link,quality,itemLevel,minimum=pcall(get,itemID)
+  if ok and type(name)=="string" and name~="" and nonnegative(minimum) then
+   local record=self:Get(profession,id) or {}
+   local outputs=record.outputUseLevels or {}
+   outputs[itemID]={level=minimum,name=name}
+   writeRequirement(profession,id,"outputUseLevels",outputs)
+   pendingItems[itemID]=nil
+   return minimum,name
+  end
+ end
+ local record=self:Get(profession,id)
+ local saved=record and record.outputUseLevels and record.outputUseLevels[itemID]
+ if saved then return saved.level,saved.name end
+ if pendingItems[itemID]==nil then
+  pendingItems[itemID]="waiting"
+  call(C_Item and C_Item.RequestLoadItemDataByID,itemID)
+ end
+end
+function Layout:UseLevelText(profession,id,outputIDs)
+ if type(outputIDs)~="table" or #outputIDs==0 then
+  return "\nLevel required to use: Not reported (no output item identified)"
+ end
+ local lines={}
+ for _,itemID in ipairs(outputIDs) do
+  local level,name=self:GetUseLevel(profession,id,itemID)
+  local label=level~=nil and (level==0 and "None" or tostring(level)) or "Not reported"
+  if #outputIDs==1 then return "\nLevel required to use: "..label end
+  lines[#lines+1]=(name or ("Item "..itemID))..": "..label
+ end
+ return "\nLevel required to use (by output):\n"..table.concat(lines,"\n")
+end

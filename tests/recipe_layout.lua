@@ -127,3 +127,47 @@ C_Item=nil
 GetItemInfo=function(id) return "Legacy Name "..id end
 assert(layout:ItemName(2000)=="Legacy Name 2000")
 print("Async item-name resolution, automatic details refresh and legacy fallback tests passed")
+
+-- Learning character level must remain separate from output use level and item level.
+GetBuildInfo=function() return "1.60.1","level-tests","date",16001 end
+GetLocale=function() return "enUS" end
+local queriedLevel=20
+C_Spell={GetSpellLevelLearned=function(id) return queriedLevel end}
+C_Item={GetItemInfo=function(itemID)
+ if itemID==501 then return "Output", "item:501",2,99,35 end
+ if itemID==502 then return "No level output", "item:502",1,50,0 end
+end}
+local learning=layout:GetLearnLevel("Cooking",123)
+assert(learning==20)
+local use=layout:GetUseLevel("Cooking",123,501)
+assert(use==35 and use~=99 and use~=learning)
+assert(layout:UseLevelText("Cooking",123,{501}):find("Level required to use: 35",1,true))
+assert(layout:UseLevelText("Cooking",123,{502}):find("Level required to use: None",1,true))
+queriedLevel=0
+assert(layout:GetLearnLevel("Cooking",124)==nil,"zero spell level was invented as no learning requirement")
+assert(layout:GetLearnLevel("Cooking",123)==20,"empty learning data erased prior evidence")
+queriedLevel=nil
+C_Spell=nil
+GetSpellLevelLearned=function() return 15 end
+assert(layout:GetLearnLevel("Cooking",125)==15)
+GetSpellLevelLearned=nil
+assert(layout:GetLearnLevel("Cooking",126)==nil)
+assert(layout:UseLevelText("Cooking",123,{}):find("no output item identified",1,true))
+local multi=layout:UseLevelText("Cooking",123,{501,502})
+assert(multi:find("Output: 35",1,true) and multi:find("No level output: None",1,true))
+-- Saved use requirements remain available when item data isn't currently cached.
+C_Item=nil;GetItemInfo=nil
+local savedUse=layout:GetUseLevel("Cooking",123,501)
+assert(savedUse==35)
+-- An uncached output uses the same async completion path as reagent item names.
+local loads=0
+C_Item={RequestLoadItemDataByID=function(id) assert(id==503);loads=loads+1 end}
+assert(layout:GetUseLevel("Cooking",123,503)==nil)
+assert(layout:GetUseLevel("Cooking",123,503)==nil and loads==1)
+assert(layout:ItemDataReceived(503,true))
+C_Item.GetItemInfo=function() return "Loaded output","item:503",1,88,40 end
+assert(layout:GetUseLevel("Cooking",123,503)==40)
+-- Item level/quality alone never populate a usage requirement.
+C_Item.GetItemInfo=function() return "Partial output","item:504",4,80 end
+assert(layout:GetUseLevel("Cooking",123,504)==nil)
+print("Learning vs output-use character-level tests passed")
