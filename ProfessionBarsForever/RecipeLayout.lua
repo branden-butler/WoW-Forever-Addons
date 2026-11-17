@@ -7,6 +7,9 @@ local function call(fn,...)
  if ok then return value end
 end
 local function positive(v) return type(v)=="number" and v>0 and v<math.huge and v==math.floor(v) end
+local function categoryID(v)
+ return type(v)=="number" and v==v and v>-math.huge and v<math.huge and v==math.floor(v)
+end
 local function context()
  local _,build=GetBuildInfo()
  return tostring(build)..":"..GetLocale()
@@ -26,7 +29,7 @@ function Layout:Capture(id,info,owners,recipeOrder)
  if type(info)~="table" or type(owners)~="table" then return end
  local api=C_TradeSkillUI or {}
  local update={}
- if positive(info.categoryID) then
+ if categoryID(info.categoryID) then
   update.categoryID=info.categoryID
   local category=call(api.GetCategoryInfo,info.categoryID)
   if type(category)=="table" and type(category.name)=="string" and category.name~="" then
@@ -70,10 +73,15 @@ function Layout:CaptureOrder()
  local api=C_TradeSkillUI or {}
  local order={}
  self.categoryRanks={}
- local categories=call(api.GetCategories)
- if type(categories)=="table" then
-  for i,id in ipairs(categories) do if positive(id) then self.categoryRanks[id]=i end end
+ local categories={}
+ if type(api.GetCategories)=="function" then
+  local values={pcall(api.GetCategories)}
+  if values[1] then
+   if type(values[2])=="table" then categories=values[2]
+   else for i=2,#values do categories[#categories+1]=values[i] end end
+  end
  end
+ for i,id in ipairs(categories) do if categoryID(id) then self.categoryRanks[id]=i end end
  local ids=call(api.GetFilteredRecipeIDs)
  if type(ids)=="table" then
   for i,id in ipairs(ids) do if positive(id) then order[id]=i end end
@@ -163,4 +171,94 @@ function Layout:Refresh(profession,id)
  if type(info)=="table" and (not info.recipeID or info.recipeID==id) then
   self:Capture(id,info,{[profession]=true})
  end
+end
+
+-- Character learning level and output usage level are independent requirements.
+local function nonnegative(v)
+ return type(v)=="number" and v>=0 and v<math.huge and v==math.floor(v)
+end
+local function writeRequirement(profession,id,key,value)
+ local d=database();if not d then return end
+ d[profession]=d[profession] or {}
+ d[profession][id]=d[profession][id] or {}
+ d[profession][id][key]=value
+end
+function Layout:GetLearnLevel(profession,id)
+ local get=(C_Spell and C_Spell.GetSpellLevelLearned) or GetSpellLevelLearned
+ local level=call(get,id)
+ if positive(level) then
+  writeRequirement(profession,id,"learnLevel",level)
+  writeRequirement(profession,id,"learnLevelSource","spell_level_learned")
+  return level
+ end
+ -- Zero/absent spell-level values are not enough evidence to assert "no requirement".
+ local record=self:Get(profession,id)
+ return record and record.learnLevel or nil
+end
+function Layout:GetUseLevel(profession,id,itemID)
+ local get=(C_Item and C_Item.GetItemInfo) or GetItemInfo
+ if type(get)=="function" then
+  local ok,name,link,quality,itemLevel,minimum=pcall(get,itemID)
+  if ok and type(name)=="string" and name~="" and nonnegative(minimum) then
+   local record=self:Get(profession,id) or {}
+   local outputs=record.outputUseLevels or {}
+   outputs[itemID]={level=minimum,name=name}
+   writeRequirement(profession,id,"outputUseLevels",outputs)
+   pendingItems[itemID]=nil
+   return minimum,name
+  end
+ end
+ local record=self:Get(profession,id)
+ local saved=record and record.outputUseLevels and record.outputUseLevels[itemID]
+ if saved then return saved.level,saved.name end
+ if pendingItems[itemID]==nil then
+  pendingItems[itemID]="waiting"
+  call(C_Item and C_Item.RequestLoadItemDataByID,itemID)
+ end
+end
+function Layout:UseLevelText(profession,id,outputIDs)
+ if type(outputIDs)~="table" or #outputIDs==0 then
+  return "\nLevel required to use: Not reported (no output item identified)"
+ end
+ local lines={}
+ for _,itemID in ipairs(outputIDs) do
+  local level,name=self:GetUseLevel(profession,id,itemID)
+  local label=level~=nil and (level==0 and "None" or tostring(level)) or "Not reported"
+  if #outputIDs==1 then return "\nLevel required to use: "..label end
+  lines[#lines+1]=(name or ("Item "..itemID))..": "..label
+ end
+ return "\nLevel required to use (by output):\n"..table.concat(lines,"\n")
+end
+
+-- Populate presentation metadata when Finder opens, independently of learned-state scans.
+function Layout:RefreshProfession(profession,recipes)
+ local api=C_TradeSkillUI or {}
+ if type(api.GetRecipeInfo)~="function" then return end
+ local order=self:CaptureOrder()
+ for _,recipe in ipairs(recipes or {}) do
+  local saved=self:Get(profession,recipe.id)
+  if not saved or not saved.categoryName or not saved.reagents then
+   if PBFCharacterStore and PBFCharacterStore:BelongsToProfession(profession,recipe.id) then
+    local info=call(api.GetRecipeInfo,recipe.id)
+    if type(info)=="table" and (not info.recipeID or info.recipeID==recipe.id) then
+     self:Capture(recipe.id,info,{[profession]=true},order[recipe.id])
+    end
+   end
+  end
+ end
+end
+
+-- Only summarize a recipe when every output has a reported, matching requirement.
+function Layout:GetUseLevelSummary(profession,id,outputIDs)
+ if type(outputIDs)~="table" or #outputIDs==0 then return nil,"?" end
+ local common,missing,varies
+ for _,itemID in ipairs(outputIDs) do
+  local level=self:GetUseLevel(profession,id,itemID)
+  if level==nil then missing=true
+  elseif common==nil then common=level
+  elseif common~=level then varies=true end
+ end
+ if missing then return nil,"?" end
+ if varies then return nil,"Varies" end
+ return common,common==0 and "None" or tostring(common)
 end
