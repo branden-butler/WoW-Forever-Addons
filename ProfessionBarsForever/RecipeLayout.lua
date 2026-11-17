@@ -221,3 +221,21 @@ function Layout:UseLevelText(profession,id,outputIDs)
  end
  return "\nLevel required to use (by output):\n"..table.concat(lines,"\n")
 end
+
+-- Populate presentation metadata when Finder opens, independently of learned-state scans.
+function Layout:RefreshProfession(profession,recipes)
+ local api=C_TradeSkillUI or {}
+ if type(api.GetRecipeInfo)~="function" then return end
+ local order=self:CaptureOrder()
+ for _,recipe in ipairs(recipes or {}) do
+  local saved=self:Get(profession,recipe.id)
+  if not saved or not saved.categoryName or not saved.reagents then
+   if PBFCharacterStore and PBFCharacterStore:BelongsToProfession(profession,recipe.id) then
+    local info=call(api.GetRecipeInfo,recipe.id)
+    if type(info)=="table" and (not info.recipeID or info.recipeID==recipe.id) then
+     self:Capture(recipe.id,info,{[profession]=true},order[recipe.id])
+    end
+   end
+  end
+ end
+end

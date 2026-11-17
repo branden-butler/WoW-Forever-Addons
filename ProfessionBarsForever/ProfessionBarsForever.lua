@@ -1093,6 +1093,7 @@ local function createBrowser()
   if not loadSavedRecipeSnapshot(name) then
    liveRecipes={profession=name,list={},fromSnapshot=false,catalogUnavailable=true}
   end
+  PBFRecipeLayout:RefreshProfession(name,liveRecipes.list)
   PBFDB.selectedCollection=name
   browser.page=1;browser.scrollOffset=0;browser.selectedID=nil;browser.collapsed={};browser.refresh()
  end

@@ -30,3 +30,7 @@ Multiple outputs list their use levels separately. Item data is requested asynch
 Automated tests distinguish spell learning levels, output minLevel and itemLevel, check explicit zero vs unavailable values, modern/legacy adapters, preservation through incomplete responses, multiple outputs and async item completion. Existing grouping, character isolation, minimap and vendor tests remain enabled.
 
 In game: compare a recipe's Learn Lvl with its training/learning requirement, then compare Level required to use against the crafted item's tooltip. Check an item with no use-level requirement and one whose use level differs from learning. Confirm sorting, grouped headers, column fit and saved-alt views.
+
+## Finder category hydration
+
+Opening a profession in Recipe Finder now attempts to load missing category/reagent presentation data directly for that profession's catalog spells. It does not open the native profession UI or use these queries to overwrite character learned status. If Forever has not loaded the requested data, Uncategorized remains until the client makes category information available; a native profession scan still supplements the same cache. Previously captured data within the same build/locale is retained on nil responses.

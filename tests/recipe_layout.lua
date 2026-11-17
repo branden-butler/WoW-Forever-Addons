@@ -171,3 +171,21 @@ assert(layout:GetUseLevel("Cooking",123,503)==40)
 C_Item.GetItemInfo=function() return "Partial output","item:504",4,80 end
 assert(layout:GetUseLevel("Cooking",123,504)==nil)
 print("Learning vs output-use character-level tests passed")
+
+-- Opening Recipe Finder itself can populate uncategorized catalog entries.
+GetBuildInfo=function() return "1.60.1","presentation-refresh","date",16001 end
+PBFCharacterStore={BelongsToProfession=function(_,profession,id) return profession=="Cooking" and id==100 end}
+C_TradeSkillUI={
+ GetRecipeInfo=function(id) return {recipeID=id,categoryID=10} end,
+ GetCategoryInfo=function() return {name="Food",uiOrder=1} end,
+ GetRecipeSchematic=function(id) return {recipeID=id,reagentSlotSchematics={{quantityRequired=1,required=true,reagents={{itemID=10940}}}}} end,
+ GetFilteredRecipeIDs=function() return {100} end
+}
+layout:RefreshProfession("Cooking",{{id=100,name="Recipe"},{id=101,name="Wrong profession"}})
+assert(layout:Get("Cooking",100).categoryName=="Food")
+assert(not layout:Get("Cooking",101))
+assert(layout:BuildRows("Cooking",{{id=100,name="Recipe"}},true,{})[1].name=="Food")
+C_TradeSkillUI.GetRecipeInfo=function() return nil end
+layout:RefreshProfession("Cooking",{{id=100,name="Recipe"}})
+assert(layout:Get("Cooking",100).categoryName=="Food","unavailable data erased groups")
+print("Finder-open category hydration tests passed")
