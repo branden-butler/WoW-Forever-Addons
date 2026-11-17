@@ -936,10 +936,14 @@ local function scanRecipes()
  -- Forever may expose multiple professions in one GetAllRecipeIDs response.
  -- Route each spell independently; never label an entire response from the selected tab.
  local list={}
+ local displayOrder=PBFRecipeLayout and PBFRecipeLayout:CaptureOrder() or {}
  local found,missing=0,0
  for _,id in ipairs(ids) do
   local good,info=pcall(modern.GetRecipeInfo,id)
   if good and type(info)=="table" and type(info.name)=="string" and info.name~="" then
+   if PBFRecipeLayout then
+    PBFRecipeLayout:Capture(id,info,PBFCharacterStore:RecipeOwners(id),displayOrder[id])
+   end
    local learned
    if type(info.learned)=="boolean" then learned=info.learned end
    list[#list+1]={id=id,name=info.name,learned=learned,requiredSkill=recipeRequiredSkill(info,id,modern)}
@@ -1089,7 +1093,7 @@ local function createBrowser()
    liveRecipes={profession=name,list={},fromSnapshot=false,catalogUnavailable=true}
   end
   PBFDB.selectedCollection=name
-  browser.page=1;browser.scrollOffset=0;browser.selectedID=nil;browser.refresh()
+  browser.page=1;browser.scrollOffset=0;browser.selectedID=nil;browser.collapsed={};browser.refresh()
  end
  browser.selectProfession=selectProfession
  UIDropDownMenu_Initialize(professionDropdown,function(self,level)
@@ -1134,7 +1138,13 @@ local function createBrowser()
   for n,v in ipairs(options) do if v==browser.sourceFilter then i=n;break end end
   browser.sourceFilter=options[i%#options+1];browser.page=1;browser.scrollOffset=0;browser.refresh()
  end)
- local count=label("",29,-145,780,"GameFontNormalSmall")
+ local count=label("",29,-145,270,"GameFontNormalSmall")
+ browser.grouped=PBFDB.recipeGrouped~=false
+ browser.collapsed={}
+ local groupButton=makeButton(browser,browser.grouped and "View: WoW Groups" or "View: Flat",310,-142,150,function()
+  browser.grouped=not browser.grouped;PBFDB.recipeGrouped=browser.grouped
+  browser.scrollOffset=0;browser.refresh()
+ end)
  -- Click headers to sort; Shift-click adds or changes a secondary key.
  -- Third click removes that key and returns to the default sort.
  local sortColumns={
@@ -1148,6 +1158,7 @@ local function createBrowser()
   return PBFDB.recipeSort
  end
  local function sortClick(key)
+  browser.grouped=false;PBFDB.recipeGrouped=false
   local spec=getSortSpec()
   local shift=type(IsShiftKeyDown)=="function" and IsShiftKeyDown()
   local idx
@@ -1198,9 +1209,24 @@ local function createBrowser()
   b:SetScript("OnLeave",function(self) self.label:SetTextColor(1,0.82,0) end)
   sortButtons[#sortButtons+1]=b
  end
- local details=detailsBg:CreateFontString(nil,"OVERLAY","GameFontHighlight")
- details:SetPoint("TOPLEFT",detailsBg,"TOPLEFT",16,-18);details:SetWidth(315);details:SetJustifyH("LEFT");details:SetJustifyV("TOP")
- details:SetText("Select a recipe to see its details.")
+ local detailsScroll=CreateFrame("ScrollFrame",nil,detailsBg,"UIPanelScrollFrameTemplate")
+ detailsScroll:SetPoint("TOPLEFT",detailsBg,"TOPLEFT",12,-12)
+ detailsScroll:SetPoint("BOTTOMRIGHT",detailsBg,"BOTTOMRIGHT",-30,12)
+ local detailsContent=CreateFrame("Frame",nil,detailsScroll)
+ detailsContent:SetSize(302,300)
+ detailsScroll:SetScrollChild(detailsContent)
+ local details=detailsContent:CreateFontString(nil,"OVERLAY","GameFontHighlight")
+ details:SetPoint("TOPLEFT",detailsContent,"TOPLEFT",4,-6)
+ details:SetWidth(294);details:SetJustifyH("LEFT");details:SetJustifyV("TOP")
+ local function setDetailsText(text)
+  details:SetText(text)
+  detailsContent:SetHeight(math.max(299,details:GetStringHeight()+20))
+ end
+ detailsScroll:EnableMouseWheel(true)
+ detailsScroll:SetScript("OnMouseWheel",function(self,delta)
+  self:SetVerticalScroll(math.max(0,math.min(self:GetVerticalScrollRange(),self:GetVerticalScroll()-delta*35)))
+ end)
+ setDetailsText("Select a recipe to see its details.")
  local rowButtons={}
  for i=1,14 do
   local btn=CreateFrame("Button",nil,browser)
@@ -1370,8 +1396,10 @@ local function createBrowser()
    b.label:SetText(b.title..suffix)
   end
   count:SetText(gathering and (#matches.." verified gathering crafts / utility abilities") or (#matches.." matching recipes"))
-  browser.matchCount=#matches
-  local maxOffset=math.max(0,#matches-#rowButtons)
+  groupButton:SetText(browser.grouped and "View: WoW Groups" or "View: Flat")
+  local displayRows=PBFRecipeLayout:BuildRows(name,matches,browser.grouped,browser.collapsed)
+  browser.matchCount=#displayRows
+  local maxOffset=math.max(0,#displayRows-#rowButtons)
   browser.scrollOffset=math.max(0,math.min(browser.scrollOffset,maxOffset))
   scroll:SetMinMaxValues(0,maxOffset)
   scroll:SetValue(browser.scrollOffset)
@@ -1379,12 +1407,22 @@ local function createBrowser()
   downArrow:SetEnabled(maxOffset>0)
   scroll:SetShown(maxOffset>0)
   for i,btn in ipairs(rowButtons) do
-   local r=matches[browser.scrollOffset+i]
-   if r then
+   local r=displayRows[browser.scrollOffset+i]
+   if r and r.header then
+    btn.recipeID=nil;btn:Show()
+    btn.cells[1]:SetText("|cffffd100"..(browser.collapsed[r.key] and "[+] " or "[-] ")..r.name.." ("..r.count..")|r")
+    btn.cells[2]:SetText("");btn.cells[3]:SetText("")
+    btn:SetScript("OnClick",function()
+     browser.collapsed[r.key]=not browser.collapsed[r.key];browser.refresh()
+    end)
+   elseif r then
     btn.recipeID=r.id;btn:Show();btn.cells[1]:SetText(r.name)
     btn.cells[2]:SetText(recipeStatus(r))
     btn.cells[3]:SetText(r.requiredSkill and tostring(r.requiredSkill) or "?")
-    btn:SetScript("OnClick",function() browser.selectedID=r.id;browser.refresh() end)
+    btn:SetScript("OnClick",function()
+     browser.selectedID=r.id;PBFRecipeLayout:Refresh(name,r.id);detailsScroll:SetVerticalScroll(0)
+     browser.refresh()
+    end)
    else btn.recipeID=nil;btn:Hide() end
   end
   local selected
@@ -1404,15 +1442,16 @@ local function createBrowser()
     local observed=PBFObservationCollector:GetVendorCandidateSummary(selected.id)
     if observed then text=text..observed end
    end
+   text=text..PBFRecipeLayout:ReagentText(name,selected.id)
    text=text.."\n\nSpell ID: "..selected.id
    if c and type(c.outputs)=="table" and #c.outputs>0 then text=text.."\nOutput item ID: "..table.concat(c.outputs,", ") end
    text=text.."\n|cff999999Look up: /profbar wowhead "..selected.id.."|r"
-   details:SetText(text)
+   setDetailsText(text)
   elseif gathering then
    local skill=profileSkills[name]
    local progress=skill and ((skill.value or 0).." / "..(skill.max or skill.maxValue or "?")) or "Not learned / not detected"
-   details:SetText("|cffffd46a"..name.." - Gathering|r\n\nCurrent skill: "..progress.."\n\n"..gatheringNotes[name].."\n\nNo verified crafting or camp-object abilities have been collected for this profession.\n\nGatherable resources, minimum skill and zone information will appear here when a verified Forever resource dataset is available. No unverified locations are displayed.")
-  else details:SetText("No recipes match your filters.") end
+   setDetailsText("|cffffd46a"..name.." - Gathering|r\n\nCurrent skill: "..progress.."\n\n"..gatheringNotes[name].."\n\nNo verified crafting or camp-object abilities have been collected for this profession.\n\nGatherable resources, minimum skill and zone information will appear here when a verified Forever resource dataset is available. No unverified locations are displayed.")
+  else setDetailsText("No recipes match your filters.") end
   footer:SetText(gathering and ("Gathering overview  |  "..( #recipes>0 and "Verified utility crafts shown" or "Resource database pending verification")) or ("Scroll to browse  |  Click headers to sort; Shift-click adds sort  |  Skill ? = unknown  |  Sources shown only where documented"))
  end
  search:SetScript("OnTextChanged",function() browser.page=1;browser.scrollOffset=0;browser.refresh() end)
@@ -1896,6 +1935,8 @@ local function safeRegister(name)
  local ok=pcall(function(self, arg1) events:RegisterEvent(name) end)
  return ok
 end
+safeRegister("GET_ITEM_INFO_RECEIVED")
+safeRegister("ITEM_DATA_LOAD_RESULT")
 safeRegister("VARIABLES_LOADED")
 safeRegister("PLAYER_LOGIN")
 safeRegister("SKILL_LINES_CHANGED")
@@ -1910,9 +1951,21 @@ safeRegister("CRAFT_SHOW")
 safeRegister("CRAFT_UPDATE")
 safeRegister("TRADE_SKILL_DATA_SOURCE_CHANGED")
 safeRegister("TRADE_SKILL_LIST_UPDATE")
-events:SetScript("OnEvent",function(self,ev)
+local itemDetailsRefreshPending=false
+local function refreshLoadedReagents()
+ if itemDetailsRefreshPending or not browser or not browser:IsShown() then return end
+ itemDetailsRefreshPending=true
+ local function refresh()
+  itemDetailsRefreshPending=false
+  if browser and browser:IsShown() then browser.refresh() end
+ end
+ if C_Timer and C_Timer.After then C_Timer.After(0.05,refresh) else refresh() end
+end
+events:SetScript("OnEvent",function(self,ev,itemID,success)
  local e=ev
- if e=="VARIABLES_LOADED" or e=="PLAYER_LOGIN" then initialize()
+ if e=="GET_ITEM_INFO_RECEIVED" or e=="ITEM_DATA_LOAD_RESULT" then
+  if initialized and PBFRecipeLayout and PBFRecipeLayout:ItemDataReceived(itemID,success) then refreshLoadedReagents() end
+ elseif e=="VARIABLES_LOADED" or e=="PLAYER_LOGIN" then initialize()
  elseif e=="SKILL_LINES_CHANGED" or e=="SKILL_LINES_UPDATED" or e=="SPELLS_CHANGED" or e=="PLAYER_ENTERING_WORLD" or e=="LEARNED_SPELL_IN_TAB" or e=="NEW_RECIPE_LEARNED" then
   if initialized then scanSkills(false);queueKnownSpellScan();if browser and browser:IsShown() then browser.refresh() end end
  elseif e=="TRADE_SKILL_SHOW" or e=="TRADE_SKILL_UPDATE" or e=="TRADE_SKILL_LIST_UPDATE" or e=="TRADE_SKILL_DATA_SOURCE_CHANGED" or e=="CRAFT_SHOW" or e=="CRAFT_UPDATE" then
